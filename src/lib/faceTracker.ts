@@ -22,9 +22,10 @@ export interface FaceTracker {
   close(): void;
 }
 
-export async function createFaceTracker(): Promise<FaceTracker> {
+/** `forceCpu` skips the GPU attempt (the ?tracker=cpu test switch; some phones are faster on CPU). */
+export async function createFaceTracker(forceCpu = false): Promise<FaceTracker> {
   const fileset = await FilesetResolver.forVisionTasks(CONFIG.tracker.wasmBasePath);
-  const { landmarker, delegate } = await createLandmarker(fileset);
+  const { landmarker, delegate } = await createLandmarker(fileset, forceCpu);
 
   return {
     delegate,
@@ -43,7 +44,10 @@ export async function createFaceTracker(): Promise<FaceTracker> {
 
 // Prefer the GPU (much faster); fall back to the CPU on devices where the GPU
 // delegate cannot start (some older browsers / GPUs).
-async function createLandmarker(fileset: Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>>) {
+async function createLandmarker(
+  fileset: Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>>,
+  forceCpu: boolean,
+) {
   const options = (delegate: 'GPU' | 'CPU') => ({
     baseOptions: { modelAssetPath: CONFIG.tracker.modelPath, delegate },
     runningMode: 'VIDEO' as const, // reuses the previous frame's result to track faster
@@ -54,6 +58,9 @@ async function createLandmarker(fileset: Awaited<ReturnType<typeof FilesetResolv
     minFacePresenceConfidence: CONFIG.tracker.minFacePresenceConfidence,
     minTrackingConfidence: CONFIG.tracker.minTrackingConfidence,
   });
+  if (forceCpu) {
+    return { landmarker: await FaceLandmarker.createFromOptions(fileset, options('CPU')), delegate: 'CPU' as const };
+  }
   try {
     return { landmarker: await FaceLandmarker.createFromOptions(fileset, options('GPU')), delegate: 'GPU' as const };
   } catch (gpuError) {

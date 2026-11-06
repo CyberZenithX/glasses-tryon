@@ -19,8 +19,14 @@ export class WebcamError extends Error {
   }
 }
 
-/** Asks for the front camera, plays it in `video`, and resolves once frames are flowing. */
-export async function startWebcam(video: HTMLVideoElement): Promise<MediaStream> {
+/**
+ * Asks for the front camera, plays it in `video`, and resolves once frames are flowing.
+ * `size` overrides the requested resolution (used by the ?camera= test switch).
+ */
+export async function startWebcam(
+  video: HTMLVideoElement,
+  size: { width: number; height: number } = { width: CONFIG.webcam.idealWidth, height: CONFIG.webcam.idealHeight },
+): Promise<MediaStream> {
   if (!window.isSecureContext) {
     throw new WebcamError('insecure', 'The camera needs a secure (https) connection.');
   }
@@ -34,8 +40,8 @@ export async function startWebcam(video: HTMLVideoElement): Promise<MediaStream>
       audio: false,
       video: {
         facingMode: 'user',
-        width: { ideal: CONFIG.webcam.idealWidth },
-        height: { ideal: CONFIG.webcam.idealHeight },
+        width: { ideal: size.width },
+        height: { ideal: size.height },
         frameRate: { ideal: CONFIG.webcam.idealFrameRate },
       },
     });

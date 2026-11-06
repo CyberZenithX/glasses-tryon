@@ -10,6 +10,9 @@ export const CONFIG = {
     // so resolution mostly affects how sharp the video looks, not tracking quality.
     idealWidth: 1280,
     idealHeight: 720,
+    // The smaller size the ?camera=480 test switch asks for.
+    lowWidth: 640,
+    lowHeight: 480,
     // Requested frame rate. Tracking runs once per new camera frame, so this caps FPS.
     idealFrameRate: 30,
   },

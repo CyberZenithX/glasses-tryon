@@ -13,6 +13,17 @@ import { createFaceTracker, type FaceTracker } from './lib/faceTracker.ts';
 import { PerformanceMonitor } from './lib/performance.ts';
 import { startWebcam, stopWebcam, WebcamError } from './lib/webcam.ts';
 
+// Performance test switches, read once from the address bar:
+//   ?tracker=cpu   run face tracking on the CPU instead of the GPU
+//   ?camera=480    ask the camera for 640x480 instead of CONFIG.webcam's size
+// They let us compare speeds on a real phone without a new build each time.
+const testSwitches = new URLSearchParams(window.location.search);
+const FORCE_CPU_TRACKER = testSwitches.get('tracker') === 'cpu';
+const CAMERA_SIZE =
+  testSwitches.get('camera') === '480'
+    ? { width: CONFIG.webcam.lowWidth, height: CONFIG.webcam.lowHeight }
+    : { width: CONFIG.webcam.idealWidth, height: CONFIG.webcam.idealHeight };
+
 interface Session {
   video: HTMLVideoElement;
   tracker: FaceTracker;
@@ -62,7 +73,7 @@ export default function App() {
 
     const start = async () => {
       try {
-        stream = await startWebcam(video);
+        stream = await startWebcam(video, CAMERA_SIZE);
       } catch (error) {
         if (cancelled) return; // e.g. play() interrupted by our own cleanup
         console.warn('Camera failed to start:', error);
@@ -77,7 +88,7 @@ export default function App() {
       setStatus({ kind: 'loading-tracker' });
 
       try {
-        tracker = await createFaceTracker();
+        tracker = await createFaceTracker(FORCE_CPU_TRACKER);
       } catch (error) {
         if (cancelled) return;
         console.warn('Face tracker failed to load:', error);
