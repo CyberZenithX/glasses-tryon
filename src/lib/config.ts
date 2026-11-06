@@ -44,6 +44,15 @@ export const CONFIG = {
     // Real glasses tilt slightly, with the lower rims closer to the cheeks
     // ("pantoscopic tilt"), and this tilt is added to every model. Positive = lower rims move in.
     pantoscopicTiltDeg: 6,
+    // Temple arm length from hinge to tip, in cm. Every model's arms are stretched or
+    // shrunk to this so they reach just behind the ear. Real arms are ~13.5-15 cm.
+    // Increase if arm tips stop in front of the ear; decrease if they reach too far back.
+    templeLengthCm: 14,
+    // Limits on that stretch, so an unusual model can't be distorted too much.
+    templeStretchRange: [0.7, 1.5] as [number, number],
+    // How much the arms slope down from the hinge towards the ear (degrees).
+    // Increase if arms pass above the ears; decrease if they pass below.
+    templeSlopeDownDeg: 7,
     // Fraction of a model's depth (front to temple tips) that counts as "the frame
     // front". Its width is the frame width and its centre goes on the eyes. Using
     // only the front means temple arms (which may splay wider or droop) are ignored.
