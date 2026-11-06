@@ -480,3 +480,25 @@ html, body, #root { margin: 0; height: 100%; overflow: hidden; background: #0b0b
 .test-table th[scope='row'] { text-align: left; opacity: 0.75; }
 .test-table thead th { opacity: 0.6; }
 .test-table td.muted { padding-left: 6px; text-align: left; }
+
+/* ---------- Privacy note (top-left, where the stats panel opens) ---------- */
+.privacy-note {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: min(400px, calc(100vw - 200px));
+  margin: 0;
+  padding: 7px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--overlay-border);
+  background: var(--overlay-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-size: 0.74rem;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.85);
+}
+.privacy-note svg { flex: none; opacity: 0.8; }

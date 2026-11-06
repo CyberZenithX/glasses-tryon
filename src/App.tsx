@@ -2,10 +2,12 @@
 // shows the mirrored "stage" (webcam + 3D glasses) with overlays on top. The stage
 // keeps the video's aspect ratio and is scaled to cover the screen, like a camera app.
 // "Capture & Compare" freezes one frame and opens the comparison screen on top.
+// ?frame=<id> preselects a frame; ?embed=1 shows only the try-on and the picker.
 import { useGLTF } from '@react-three/drei';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import ComparisonView from './components/ComparisonView.tsx';
 import GlassesPicker from './components/GlassesPicker.tsx';
+import PrivacyNote from './components/PrivacyNote.tsx';
 import { CameraIcon } from './components/Icons.tsx';
 import StatsOverlay from './components/StatsOverlay.tsx';
 import StatusScreen, { type AppStatus } from './components/StatusScreen.tsx';
@@ -16,6 +18,7 @@ import { CONFIG } from './lib/config.ts';
 import { createFaceTracker, type FaceTracker } from './lib/faceTracker.ts';
 import { PerformanceMonitor } from './lib/performance.ts';
 import { TestRecorder } from './lib/stabilityTest.ts';
+import { initialFrameId, IS_EMBED, writeFrameToUrl } from './lib/urlOptions.ts';
 import { TEST_SWITCHES } from './lib/testSwitches.ts';
 import { startWebcam, stopWebcam, WebcamError } from './lib/webcam.ts';
 
@@ -40,7 +43,11 @@ export default function App() {
   const [showDebug, setShowDebug] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [smoothingEnabled, setSmoothingEnabled] = useState(true);
-  const [selectedId, setSelectedId] = useState(CATALOG[0]?.id ?? '');
+  const [selectedId, setSelectedId] = useState(() => initialFrameId(CATALOG));
+  const selectFrame = (id: string) => {
+    setSelectedId(id);
+    writeFrameToUrl(id); // keeps the address shareable: it reopens with this frame
+  };
   const selectedModel = CATALOG.find((model) => model.id === selectedId) ?? null;
   // One monitor for the app's lifetime: the frame loop writes to it, the panel reads it.
   const [monitor] = useState(() => new PerformanceMonitor());
@@ -120,6 +127,7 @@ export default function App() {
 
   // Keyboard shortcuts for the debug view and stats (handy while recording / presenting).
   useEffect(() => {
+    if (IS_EMBED) return; // inside a store's page, keys belong to that page
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'd') setShowDebug((on) => !on);
       if (event.key === 's') setShowStats((on) => !on);
@@ -146,7 +154,7 @@ export default function App() {
   const stageStyle = { '--video-aspect': videoAspect ?? 16 / 9 } as CSSProperties;
 
   return (
-    <main className="app">
+    <main className={`app ${IS_EMBED ? 'app-embed' : ''}`}>
       {/* The stage is mirrored as ONE unit (video + 3D + debug dots), so the selfie
           view feels natural and everything stays aligned with the face. */}
       <div className="stage" style={stageStyle}>
@@ -180,7 +188,7 @@ export default function App() {
 
       {status.kind === 'ready' && session && !comparing && (
         <>
-          {showStats && (
+          {showStats && !IS_EMBED && (
             <StatsOverlay
               monitor={monitor}
               recorder={recorder}
@@ -191,37 +199,43 @@ export default function App() {
               onSmoothingChange={setSmoothingEnabled}
             />
           )}
-          <div className="toolbar">
-            <button
-              type="button"
-              className={`chip ${showStats ? 'chip-on' : ''}`}
-              aria-pressed={showStats}
-              onClick={() => setShowStats((on) => !on)}
-            >
-              Stats
-            </button>
-            <button
-              type="button"
-              className={`chip ${showDebug ? 'chip-on' : ''}`}
-              aria-pressed={showDebug}
-              onClick={() => setShowDebug((on) => !on)}
-            >
-              Debug
-            </button>
-          </div>
+          {!showStats && !IS_EMBED && <PrivacyNote />}
+          {!IS_EMBED && (
+            <div className="toolbar">
+              <button
+                type="button"
+                className={`chip ${showStats ? 'chip-on' : ''}`}
+                aria-pressed={showStats}
+                onClick={() => setShowStats((on) => !on)}
+              >
+                Stats
+              </button>
+              <button
+                type="button"
+                className={`chip ${showDebug ? 'chip-on' : ''}`}
+                aria-pressed={showDebug}
+                onClick={() => setShowDebug((on) => !on)}
+              >
+                Debug
+              </button>
+            </div>
+          )}
           {showFaceHint && <p className="face-hint">Look at the camera to try on glasses</p>}
           <div className="bottom-bar">
-            <button
-              type="button"
-              className="capture-button"
-              disabled={!faceVisible}
-              title={faceVisible ? undefined : 'Look at the camera first'}
-              onClick={() => comparison.capture(selectedId)}
-            >
-              <CameraIcon /> {comparison.capturing ? 'Hold still…' : 'Capture & Compare'}
-            </button>
+            {!IS_EMBED && (
+              <button
+                type="button"
+                className="capture-button"
+                disabled={!faceVisible}
+                title={faceVisible ? undefined : 'Look at the camera first'}
+                onClick={() => comparison.capture(selectedId)}
+              >
+                <CameraIcon /> {comparison.capturing ? 'Hold still…' : 'Capture & Compare'}
+              </button>
+            )}
             {selectedModel && (
-              // CC-BY models must credit their authors; doing it where the model is shown.
+              // CC-BY models must credit their authors; doing it where the model is shown
+              // (kept in embed mode too: the licence requires it wherever it is shown).
               <p className="credit">
                 {selectedModel.name} ·{' '}
                 <a href={selectedModel.credit.sourceUrl} target="_blank" rel="noreferrer">
@@ -230,7 +244,7 @@ export default function App() {
                 · {selectedModel.credit.license.replace('-4.0', ' 4.0').replace('-', ' ')}
               </p>
             )}
-            <GlassesPicker models={CATALOG} selectedId={selectedId} onSelect={setSelectedId} />
+            <GlassesPicker models={CATALOG} selectedId={selectedId} onSelect={selectFrame} />
           </div>
         </>
       )}
