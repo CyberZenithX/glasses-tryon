@@ -8,12 +8,11 @@ import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { getCanonicalFace } from '../lib/canonicalFace.ts';
 import { CONFIG } from '../lib/config.ts';
+import { earVolume } from '../lib/ear.ts';
 
 // Drawn after the video background (-1000) and before the glasses (0).
 const OCCLUDER_RENDER_ORDER = -1;
 const SPHERE_SEGMENTS = 24;
-// Ears stick out from the head: the shape's centre is pushed out by this fraction of its half-width.
-const EAR_OUTSIDE_HEAD_FRACTION = 0.3;
 
 /**
  * Copy of the canonical face whose sides (behind the cheeks) are pulled in a bit,
@@ -71,15 +70,9 @@ export default function HeadOccluder({ visibleForDebug }: { visibleForDebug: boo
   useEffect(() => () => shadowMaterial.dispose(), [shadowMaterial]);
 
   const { skullCentre, skullRadii } = CONFIG.occluder;
-  // Ear shape placed from the shared ear root: top just under the root (so the arm
-  // stays visible as it passes over the ear) and front at the root (so the part of
-  // the arm behind the ear, and its tip, are hidden).
-  const [rootX, rootY, rootZ] = CONFIG.ear.rootCm;
-  const earRadii = CONFIG.ear.occluderRadiiCm;
-  const [earRadiusX, earRadiusY, earRadiusZ] = earRadii;
-  const earX = rootX + earRadiusX * EAR_OUTSIDE_HEAD_FRACTION;
-  const earY = rootY - earRadiusY;
-  const earZ = rootZ - earRadiusZ;
+  // Ears: placed from the shared ear root, so arms (aimed at the same root) vanish
+  // exactly where they reach the ear. See ear.ts.
+  const ear = useMemo(() => earVolume(), []);
   return (
     <group>
       <mesh geometry={faceGeometry} material={material} renderOrder={OCCLUDER_RENDER_ORDER} />
@@ -92,13 +85,13 @@ export default function HeadOccluder({ visibleForDebug }: { visibleForDebug: boo
         renderOrder={OCCLUDER_RENDER_ORDER}
       />
       {/* Ears: one each side (person's left at +X, right at -X). */}
-      {[earX, -earX].map((x) => (
+      {[1, -1].map((side) => (
         <mesh
-          key={x}
+          key={side}
           geometry={sphereGeometry}
           material={material}
-          position={[x, earY, earZ]}
-          scale={earRadii}
+          position={[side * ear.centre.x, ear.centre.y, ear.centre.z]}
+          scale={ear.radii}
           renderOrder={OCCLUDER_RENDER_ORDER}
         />
       ))}

@@ -145,6 +145,8 @@ export function bendTemplesToEars(model: THREE.Object3D, fit: GlassesFit): void 
   });
 
   // 2. Aim at the ear: slopes (cm per cm travelled back) for height and width.
+  //    Behind the ear root the arm stops spreading outwards and runs along the
+  //    skull, tucked behind the ear (and inside the ear occluder, see ear.ts).
   const aim = armSlopesToEar(straightened.flat(), fit.hingeZ);
   for (const [index, { mesh, meshToFace }] of meshes.entries()) {
     const faceToMesh = meshToFace.clone().invert();
@@ -153,7 +155,7 @@ export function bendTemplesToEars(model: THREE.Object3D, fit: GlassesFit): void 
       const behindHinge = fit.hingeZ - point.z;
       if (behindHinge > 0) {
         point.y -= behindHinge * aim.down;
-        point.x += (Math.sign(point.x) || 1) * behindHinge * aim.out;
+        point.x += (Math.sign(point.x) || 1) * Math.min(behindHinge, aim.earBehindHinge) * aim.out;
       }
       point.applyMatrix4(faceToMesh);
       positions.setXYZ(i, point.x, point.y, point.z);
@@ -176,13 +178,17 @@ export function tiltPivot(): THREE.Vector3 {
 
 /**
  * How much to shear the (straightened, stretched) arms so they pass over the ear
- * root: `down` = drop in cm per cm travelled back, `out` = outward move per cm.
+ * root: `down` = drop in cm per cm travelled back, `out` = outward move per cm,
+ * and `earBehindHinge` = how far behind the hinge the ear root is.
  * We measure where the arms already are at the ear's depth (average height and
  * distance from the centre line) and tilt them by exactly the amount that moves
  * that point onto the ear. Measuring at the ear (not at the hinge) works for any
  * arm shape: straight, already sloping, or curved, and ignores chunky frame fronts.
  */
-function armSlopesToEar(points: THREE.Vector3[], hingeZ: number): { down: number; out: number } {
+function armSlopesToEar(
+  points: THREE.Vector3[],
+  hingeZ: number,
+): { down: number; out: number; earBehindHinge: number } {
   const EAR_ZONE_HALF_DEPTH_CM = 1; // arm vertices within ±1 cm of the ear (front to back)
   const MAX_DOWN_SLOPE = Math.tan(THREE.MathUtils.degToRad(30)); // guards against odd models
   const MAX_OUT_SLOPE = Math.tan(THREE.MathUtils.degToRad(15));
@@ -207,12 +213,13 @@ function armSlopesToEar(points: THREE.Vector3[], hingeZ: number): { down: number
       count++;
     }
   }
-  if (count === 0) return { down: 0, out: 0 };
+  if (count === 0) return { down: 0, out: 0, earBehindHinge };
   const down = (sumY / count - ear.y) / earBehindHinge;
   const out = (ear.x - sumHalfWidth / count) / earBehindHinge;
   return {
     down: THREE.MathUtils.clamp(down, -MAX_DOWN_SLOPE, MAX_DOWN_SLOPE),
     out: THREE.MathUtils.clamp(out, -MAX_OUT_SLOPE, MAX_OUT_SLOPE),
+    earBehindHinge,
   };
 }
 

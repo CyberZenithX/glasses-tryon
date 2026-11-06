@@ -68,17 +68,25 @@ export const CONFIG = {
   // and phone cameras, which squashes everything behind the face towards the face.
   ear: {
     // "Ear root": where the top of the ear joins the head; temple arms rest here.
-    // Arms are aimed at this point, then their tips go behind the ear.
+    // Arms are aimed at this point and disappear behind the ear from there on.
     // Raise Y if arms cut through the ear; lower it if they float above it.
     // Move Z back (more negative) if arms vanish before reaching the ear; raise X
     // if, seen from the front, the arms end inside the face instead of at the ears.
     rootCm: [8.8, 2.8, -5.6] as [number, number, number],
     // How far above the ear root the middle of the arm passes (about half its thickness).
     armRestHeightCm: 0.25,
-    // Size of the invisible ear shape (half-width out from the head, half-height,
-    // half-depth). Its top is just under the ear root and its front at the root.
-    // Wide enough that the arm's tip stays hidden even when seen from below.
-    occluderRadiiCm: [1.3, 3.0, 2.1] as [number, number, number],
+    // The invisible ear shape (see ear.ts): one solid ellipsoid holding the ear and
+    // the gap behind it, which the arms vanish into. Its front is at the root, so
+    // the arm is visible right up to the ear and hidden from there on.
+    // How far the top of the ear rises above the root. Real ears rise ~1 cm above
+    // the arm, which is why the arm is hidden behind the ear, not drawn over it.
+    helixAboveRootCm: 1.0,
+    // How far the shape reaches inside the head from the root, so the arm (which
+    // runs along the skull) is inside it rather than just beside it.
+    insideHeadCm: 1.0,
+    // Half-width (out from the head), half-height and half-depth. Deep enough to
+    // hold the arm tips (which end ~3 cm behind the root).
+    occluderRadiiCm: [1.5, 3.5, 2.5] as [number, number, number],
   },
 
   glasses: {
