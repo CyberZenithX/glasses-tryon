@@ -2,10 +2,12 @@
 // shows the mirrored "stage" (webcam + 3D glasses) with overlays on top. The stage
 // keeps the video's aspect ratio and is scaled to cover the screen, like a camera app.
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import StatsOverlay from './components/StatsOverlay.tsx';
 import StatusScreen, { type AppStatus } from './components/StatusScreen.tsx';
 import TryOnCanvas from './components/TryOnCanvas.tsx';
 import { CATALOG } from './lib/catalog.ts';
 import { createFaceTracker, type FaceTracker } from './lib/faceTracker.ts';
+import { PerformanceMonitor } from './lib/performance.ts';
 import { startWebcam, stopWebcam, WebcamError } from './lib/webcam.ts';
 
 interface Session {
@@ -22,6 +24,9 @@ export default function App() {
   const [videoAspect, setVideoAspect] = useState<number | null>(null);
   const [debugCanvas, setDebugCanvas] = useState<HTMLCanvasElement | null>(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  // One monitor for the app's lifetime: the frame loop writes to it, the panel reads it.
+  const [monitor] = useState(() => new PerformanceMonitor());
   const [faceVisible, setFaceVisible] = useState(false);
   // Bumping this re-runs the start-up effect ("Try again" button).
   const [attempt, setAttempt] = useState(0);
@@ -72,10 +77,11 @@ export default function App() {
     };
   }, [attempt]);
 
-  // Keyboard shortcut for the debug view (handy while recording / presenting).
+  // Keyboard shortcuts for the debug view and stats (handy while recording / presenting).
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'd') setShowDebug((on) => !on);
+      if (event.key === 's') setShowStats((on) => !on);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -100,6 +106,7 @@ export default function App() {
             video={session.video}
             tracker={session.tracker}
             model={CATALOG[0] ?? null}
+            monitor={monitor}
             showDebug={showDebug}
             debugCanvas={debugCanvas}
             onFaceVisibleChange={setFaceVisible}
@@ -114,9 +121,25 @@ export default function App() {
         />
       </div>
 
-      {status.kind === 'ready' && (
+      {status.kind === 'ready' && session && (
         <>
+          {showStats && (
+            <StatsOverlay
+              monitor={monitor}
+              delegate={session.tracker.delegate}
+              videoWidth={session.video.videoWidth}
+              videoHeight={session.video.videoHeight}
+            />
+          )}
           <div className="toolbar">
+            <button
+              type="button"
+              className={`chip ${showStats ? 'chip-on' : ''}`}
+              aria-pressed={showStats}
+              onClick={() => setShowStats((on) => !on)}
+            >
+              Stats
+            </button>
             <button
               type="button"
               className={`chip ${showDebug ? 'chip-on' : ''}`}

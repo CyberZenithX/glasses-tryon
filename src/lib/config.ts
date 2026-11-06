@@ -61,6 +61,15 @@ export const CONFIG = {
     fadeDurationSec: 0.25,
   },
 
+  stats: {
+    // How many recent frames the live FPS / latency figures average over.
+    // Bigger = steadier numbers that react more slowly to changes.
+    windowFrames: 90, // ~3 s at 30 fps
+    // How often the on-screen stats panel refreshes (per second). Refreshing
+    // less often keeps the panel readable and costs almost nothing.
+    panelRefreshHz: 4,
+  },
+
   debug: {
     landmarkRadiusPx: 1.6, // size of each landmark dot in the debug view
     landmarkColor: '#3ee6a8',

@@ -15,6 +15,8 @@ export interface FaceDetection {
 }
 
 export interface FaceTracker {
+  /** Where the model runs: 'GPU' (WebGL) or 'CPU' (fallback). Shown in the stats panel. */
+  delegate: 'GPU' | 'CPU';
   /** Runs the model on the current video frame. Returns null when no face is found. */
   detect(video: HTMLVideoElement, timestampMs: number): FaceDetection | null;
   close(): void;
@@ -22,9 +24,10 @@ export interface FaceTracker {
 
 export async function createFaceTracker(): Promise<FaceTracker> {
   const fileset = await FilesetResolver.forVisionTasks(CONFIG.tracker.wasmBasePath);
-  const landmarker = await createLandmarker(fileset);
+  const { landmarker, delegate } = await createLandmarker(fileset);
 
   return {
+    delegate,
     detect(video, timestampMs) {
       const result = landmarker.detectForVideo(video, timestampMs);
       const landmarks = result.faceLandmarks[0];
@@ -52,9 +55,9 @@ async function createLandmarker(fileset: Awaited<ReturnType<typeof FilesetResolv
     minTrackingConfidence: CONFIG.tracker.minTrackingConfidence,
   });
   try {
-    return await FaceLandmarker.createFromOptions(fileset, options('GPU'));
+    return { landmarker: await FaceLandmarker.createFromOptions(fileset, options('GPU')), delegate: 'GPU' as const };
   } catch (gpuError) {
     console.warn('GPU face tracking unavailable, falling back to CPU:', gpuError);
-    return FaceLandmarker.createFromOptions(fileset, options('CPU'));
+    return { landmarker: await FaceLandmarker.createFromOptions(fileset, options('CPU')), delegate: 'CPU' as const };
   }
 }

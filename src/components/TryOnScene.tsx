@@ -1,5 +1,5 @@
 // The per-frame loop and the head-anchored 3D content. Every frame:
-//   new video frame? -> detect face (RAW pose) -> move the head group -> render.
+//   new video frame? -> detect face (RAW pose) -> move the head group -> render -> timings.
 // Everything that happens per frame lives in the single useFrame callback below,
 // so the whole pipeline can be read top to bottom in one place.
 import { useFrame } from '@react-three/fiber';
@@ -11,6 +11,7 @@ import { CONFIG } from '../lib/config.ts';
 import { clearDebugCanvas, drawLandmarks } from '../lib/debugDraw.ts';
 import type { FaceTracker } from '../lib/faceTracker.ts';
 import { setFade } from '../lib/materials.ts';
+import { VideoFrameClock, type PerformanceMonitor } from '../lib/performance.ts';
 import { createPose, matrixFromPose, poseFromMediaPipeMatrix } from '../lib/poseMath.ts';
 import Glasses from './Glasses.tsx';
 
@@ -18,6 +19,7 @@ interface TryOnSceneProps {
   video: HTMLVideoElement;
   tracker: FaceTracker;
   model: GlassesModel | null;
+  monitor: PerformanceMonitor;
   showDebug: boolean;
   debugCanvas: HTMLCanvasElement | null;
   onFaceVisibleChange: (visible: boolean) => void;
@@ -28,7 +30,7 @@ interface TryOnSceneProps {
 const RENDER_PRIORITY = 1;
 
 export default function TryOnScene(props: TryOnSceneProps) {
-  const { video, tracker, model, showDebug, debugCanvas, onFaceVisibleChange } = props;
+  const { video, tracker, model, monitor, showDebug, debugCanvas, onFaceVisibleChange } = props;
   // The head group is moved by setting its matrix directly from the pose each frame.
   const headGroupRef = useRef<THREE.Group>(null);
   const glassesGroupRef = useRef<THREE.Group>(null);
@@ -43,6 +45,14 @@ export default function TryOnScene(props: TryOnSceneProps) {
     fade: 0, // 0 = glasses hidden, 1 = fully shown
   });
 
+  // Records when each camera frame arrives, for the latency figure.
+  const frameClockRef = useRef<VideoFrameClock | null>(null);
+  useEffect(() => {
+    const clock = new VideoFrameClock(video);
+    frameClockRef.current = clock;
+    return () => clock.stop();
+  }, [video]);
+
   useEffect(() => {
     if (!showDebug && debugCanvas) clearDebugCanvas(debugCanvas);
   }, [showDebug, debugCanvas]);
@@ -56,11 +66,15 @@ export default function TryOnScene(props: TryOnSceneProps) {
     //    The screen may refresh at 60-120 Hz while the camera gives ~30 fps.
     const hasNewFrame =
       video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.currentTime !== frameState.lastVideoTime;
+    let inferenceMs = 0;
+    const frameNoticedAt = performance.now();
     if (hasNewFrame) {
       frameState.lastVideoTime = video.currentTime;
 
-      // 2. Face tracking -> RAW pose.
-      const detection = tracker.detect(video, performance.now());
+      // 2. Face tracking -> RAW pose. Timed on its own: this is the "AI" cost.
+      const inferenceStart = performance.now();
+      const detection = tracker.detect(video, inferenceStart);
+      inferenceMs = performance.now() - inferenceStart;
       if (detection) {
         poseFromMediaPipeMatrix(detection.poseMatrix, frameState.matrix, frameState.rawPose);
         // 3. Move everything attached to the head (glasses, occluder, debug mesh).
@@ -91,6 +105,19 @@ export default function TryOnScene(props: TryOnSceneProps) {
 
     // 5. Render video background + head content in one pass.
     gl.render(scene, camera);
+
+    // 6. Timings for the stats panel. Latency = frame arrival -> render submitted.
+    //    It cannot include the camera's own exposure/USB delay or the display's
+    //    scan-out, which the browser does not expose (see docs/PERFORMANCE.md).
+    if (hasNewFrame) {
+      const clock = frameClockRef.current;
+      monitor.recordFrame({
+        frameArrivedAt: clock?.latestArrivalMs ?? frameNoticedAt,
+        arrivalSource: clock?.latestArrivalMs != null ? clock.source : 'loop',
+        inferenceMs,
+        renderedAt: performance.now(),
+      });
+    }
   }, RENDER_PRIORITY);
 
   return (

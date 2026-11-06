@@ -5,6 +5,7 @@ import { Canvas } from '@react-three/fiber';
 import { CONFIG } from '../lib/config.ts';
 import type { GlassesModel } from '../lib/catalog.ts';
 import type { FaceTracker } from '../lib/faceTracker.ts';
+import type { PerformanceMonitor } from '../lib/performance.ts';
 import TryOnScene from './TryOnScene.tsx';
 import VideoBackground from './VideoBackground.tsx';
 
@@ -15,6 +16,7 @@ interface TryOnCanvasProps {
   video: HTMLVideoElement;
   tracker: FaceTracker;
   model: GlassesModel | null;
+  monitor: PerformanceMonitor;
   showDebug: boolean;
   debugCanvas: HTMLCanvasElement | null;
   onFaceVisibleChange: (visible: boolean) => void;
