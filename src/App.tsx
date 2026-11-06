@@ -1,11 +1,14 @@
 // Top-level layout and UI state. Starts the camera, then the face tracker, then
 // shows the mirrored "stage" (webcam + 3D glasses) with overlays on top. The stage
 // keeps the video's aspect ratio and is scaled to cover the screen, like a camera app.
+import { useGLTF } from '@react-three/drei';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import GlassesPicker from './components/GlassesPicker.tsx';
 import StatsOverlay from './components/StatsOverlay.tsx';
 import StatusScreen, { type AppStatus } from './components/StatusScreen.tsx';
 import TryOnCanvas from './components/TryOnCanvas.tsx';
 import { CATALOG } from './lib/catalog.ts';
+import { CONFIG } from './lib/config.ts';
 import { createFaceTracker, type FaceTracker } from './lib/faceTracker.ts';
 import { PerformanceMonitor } from './lib/performance.ts';
 import { startWebcam, stopWebcam, WebcamError } from './lib/webcam.ts';
@@ -26,11 +29,19 @@ export default function App() {
   const [showDebug, setShowDebug] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [smoothingEnabled, setSmoothingEnabled] = useState(true);
+  const [selectedId, setSelectedId] = useState(CATALOG[0]?.id ?? '');
+  const selectedModel = CATALOG.find((model) => model.id === selectedId) ?? null;
   // One monitor for the app's lifetime: the frame loop writes to it, the panel reads it.
   const [monitor] = useState(() => new PerformanceMonitor());
   const [faceVisible, setFaceVisible] = useState(false);
   // Bumping this re-runs the start-up effect ("Try again" button).
   const [attempt, setAttempt] = useState(0);
+
+  // Download all glasses models in the background while the camera starts, so the
+  // first switch to any frame is instant.
+  useEffect(() => {
+    CATALOG.forEach((model) => useGLTF.preload(model.file, CONFIG.glasses.dracoDecoderPath));
+  }, []);
 
   // Start-up sequence: camera first (so the permission prompt appears right away),
   // then the face tracking model.
@@ -106,7 +117,7 @@ export default function App() {
           <TryOnCanvas
             video={session.video}
             tracker={session.tracker}
-            model={CATALOG[0] ?? null}
+            model={selectedModel}
             monitor={monitor}
             smoothingEnabled={smoothingEnabled}
             showDebug={showDebug}
@@ -154,6 +165,7 @@ export default function App() {
             </button>
           </div>
           {!faceVisible && <p className="face-hint">Look at the camera to try on glasses</p>}
+          <GlassesPicker models={CATALOG} selectedId={selectedId} onSelect={setSelectedId} />
         </>
       )}
       <StatusScreen status={status} onRetry={retry} />
