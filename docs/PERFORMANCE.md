@@ -75,7 +75,7 @@ The live panel averages roughly the last 90 frames.
 
 | Device | Browser | Video | Tracker | Lighting | FPS | Inference avg / p95 | Latency avg / p95 |
 |---|---|---|---|---|---|---|---|
-| Desktop PC _(model: fill in)_ | _(fill in)_ | 1280×720 | GPU | _(fill in)_ | **58.9** | **14.1 / 17.5 ms** | **40.5 / 60.6 ms** |
+| Windows desktop PC | Chrome | 1280×720 | GPU | indoor | **58.9** | **14.1 / 17.5 ms** | **40.5 / 60.6 ms** |
 
 Both targets are met with a wide margin on this PC: 58.9 FPS against 24, and a
 p95 latency of 60.6 ms against 100 ms. The frame rate is above 30, so the
@@ -84,16 +84,47 @@ webcam delivered about 60 frames per second. The app asks for 30 FPS as an
 
 ### 10-second tests
 
-_To be filled in from the downloaded CSVs._
+Run on 2026-11-06 on the same Windows desktop PC: Chrome 156, 1280×720 video, GPU
+tracker, smoothing on, no test switches, bright light. Both runs had a face on
+every frame. The raw CSVs are in [`results/`](results/).
 
-| Device | Lighting | Test | FPS avg / p50 / p95 / min | Latency avg / p50 / p95 / min (ms) | Jitter raw avg / p95 (mm, °) | Jitter smoothed avg / p95 (mm, °) | Lag avg / p95 (mm, °) |
-|---|---|---|---|---|---|---|---|
-| _PC_ | _bright_ | Hold still | | | | | |
-| _PC_ | _dim_ | Hold still | | | | | |
-| _PC_ | _bright_ | Head turn | | | | | |
-| _PC_ | _side-turned head_ | Head turn | | | | | |
-| _Phone_ | _bright_ | Hold still | | | | | |
-| _Phone_ | _bright_ | Head turn | | | | | |
+| Test | Frames | FPS avg / p50 / p95 / min | Latency avg / p50 / p95 / min (ms) | Inference avg / p95 (ms) |
+|---|---|---|---|---|
+| Hold still | 367 in 9.94 s | 36.8 / 38.8 / 24.9 / 17.7 | 45.9 / 44.4 / 73.6 / 21.1 | 22.0 / 29.6 |
+| Head turn | 369 in 9.96 s | 37.0 / 39.7 / 23.9 / 15.3 | 45.1 / 43.1 / 68.6 / 19.3 | 21.9 / 29.6 |
+
+**Jitter (hold still: frame-to-frame movement while the head is still)**
+
+| | Raw avg | Raw p95 | Smoothed avg | Smoothed p95 | Smoothing cuts p95 by |
+|---|---|---|---|---|---|
+| Position (mm) | 0.089 | 0.319 | 0.057 | 0.209 | 34% |
+| Rotation (°) | 0.025 | 0.083 | 0.019 | 0.064 | 23% |
+
+**Lag (head turn: how far the smoothed glasses trail the raw pose)**
+
+| | avg | p50 | p95 | max |
+|---|---|---|---|---|
+| Position (mm) | 2.99 | 2.73 | 5.93 | 10.86 |
+| Rotation (°) | 1.05 | 0.88 | 2.55 | 4.83 |
+
+**What this shows**
+
+- **Both targets are met.** Average FPS is about 37 against a target of 24,
+  and p95 latency is 69–74 ms against 100 ms. The FPS p95 of about 24 means 95%
+  of frames ran at roughly 24 FPS or faster.
+- **Raw tracking is already steady when still.** Its p95 is a third of a
+  millimetre, which is invisible on screen. Smoothing removes about a third
+  more (p95 0.32 → 0.21 mm).
+- **The price is a small trail when moving.** The smoothed glasses sit on
+  average 3 mm (p95 6 mm) and 1° behind the raw pose during a slow head turn.
+  Raising `beta` in `CONFIG.smoothing` would reduce this lag at the cost of
+  more jitter.
+- **The two PC readings differ.** These runs averaged about 37 FPS, while the
+  live-panel reading above was 58.9 FPS. The live panel only averages the last
+  ~90 frames, while each test covers 10 seconds. The runs were also taken at a
+  different time, so the PC's background load may have differed.
+
+Not yet measured: dim light, a side-turned head, and phones.
 
 ## Limitations of these measurements
 
