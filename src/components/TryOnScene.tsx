@@ -177,12 +177,17 @@ export default function TryOnScene(props: TryOnSceneProps) {
       1,
     );
     const glassesGroup = glassesGroupRef.current;
-    if (glassesGroup && fade !== frameState.fade) setFade(glassesGroup, fade);
+    const fading = fade !== frameState.fade;
+    if (glassesGroup && fading) setFade(glassesGroup, fade);
     frameState.fade = fade;
     headGroup.visible = fade > 0 || (showDebug && frameState.faceVisible);
 
-    // 7. Render video background + head content in one pass.
-    gl.render(scene, camera);
+    // 7. Render video background + head content in one pass, but only when there
+    //    is something new to show: a new camera frame, or a fade in progress. The
+    //    screen refreshes at 60-120 Hz but the camera gives ~30 fps, so redrawing
+    //    the same picture would only steal the GPU from face tracking (on phones
+    //    both share it). Skipping a render keeps the last picture on screen.
+    if (hasNewFrame || fading) gl.render(scene, camera);
 
     // 8. Timings for the stats panel. Latency = frame arrival -> render submitted.
     //    It cannot include the camera's own exposure/USB delay or the display's
