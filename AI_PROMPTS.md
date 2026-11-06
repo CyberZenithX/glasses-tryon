@@ -1,5 +1,7 @@
 # The Build Prompt
+> **Note:** This prompt was written by Claude and reviewed by me after I finished conducting research on Option A & B and the architecure required to build the most seamless AI-Powered Glasses Try-on Web App.: 
 
+```
 Save this file into Claude.md. and start building. If you still have any doubts, then ask me before you do anything.:
 # Project Brief: Real-Time Virtual Glasses Try-On (Web)
 
@@ -408,3 +410,4 @@ Finish with a short list of likely interview questions and plain-English answers
 - [ ] Build, type-check, lint and tests all pass.
 - [ ] Deployed on Vercel over HTTPS.
 - [ ] I can explain the architecture and what each main function does. If any part is too complex for that, simplify it.
+```
