@@ -1,6 +1,7 @@
 // Draws the webcam video as a full-screen background *inside* the 3D scene.
 // Drawing it in WebGL (instead of a separate <video> layer) means the video frame
-// and the glasses are painted in the same render, so they never drift apart.
+// and the glasses are painted in the same render. The texture is owned by the
+// per-frame loop (TryOnScene), which refreshes it with exactly the frame it tracked.
 import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 
@@ -32,11 +33,8 @@ const fragmentShader = /* glsl */ `
 // Drawn before every other object (lower renderOrder = earlier).
 const BACKGROUND_RENDER_ORDER = -1000;
 
-export default function VideoBackground({ video }: { video: HTMLVideoElement }) {
+export default function VideoBackground({ texture }: { texture: THREE.Texture }) {
   const material = useMemo(() => {
-    const texture = new THREE.VideoTexture(video);
-    // Sample the raw values; the shader does the sRGB decode itself.
-    texture.colorSpace = THREE.NoColorSpace;
     return new THREE.ShaderMaterial({
       uniforms: { videoTexture: { value: texture } },
       vertexShader,
@@ -45,14 +43,9 @@ export default function VideoBackground({ video }: { video: HTMLVideoElement }) 
       depthWrite: false, // ...and never hides anything (the glasses draw on top)
       toneMapped: false, // keep the camera image exactly as captured
     });
-  }, [video]);
+  }, [texture]);
 
-  useEffect(() => {
-    return () => {
-      material.uniforms.videoTexture?.value.dispose();
-      material.dispose();
-    };
-  }, [material]);
+  useEffect(() => () => material.dispose(), [material]);
 
   return (
     <mesh renderOrder={BACKGROUND_RENDER_ORDER} frustumCulled={false} material={material}>

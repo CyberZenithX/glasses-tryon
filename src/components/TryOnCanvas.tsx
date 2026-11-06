@@ -11,7 +11,6 @@ import type { GlassesModel } from '../lib/catalog.ts';
 import type { FaceTracker } from '../lib/faceTracker.ts';
 import type { PerformanceMonitor } from '../lib/performance.ts';
 import TryOnScene from './TryOnScene.tsx';
-import VideoBackground from './VideoBackground.tsx';
 
 interface TryOnCanvasProps {
   video: HTMLVideoElement;
@@ -24,7 +23,7 @@ interface TryOnCanvasProps {
   onFaceVisibleChange: (visible: boolean) => void;
 }
 
-export default function TryOnCanvas({ video, ...sceneProps }: TryOnCanvasProps) {
+export default function TryOnCanvas(sceneProps: TryOnCanvasProps) {
   return (
     <Canvas
       className="tryon-canvas"
@@ -49,8 +48,7 @@ export default function TryOnCanvas({ video, ...sceneProps }: TryOnCanvasProps) 
         {/* Image-based lighting: reflections on frames and lenses. Not shown as a background. */}
         <Environment files={CONFIG.lighting.environmentMap} />
       </Suspense>
-      <VideoBackground video={video} />
-      <TryOnScene video={video} {...sceneProps} />
+      <TryOnScene {...sceneProps} />
     </Canvas>
   );
 }

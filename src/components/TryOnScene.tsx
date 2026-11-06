@@ -1,10 +1,11 @@
 // The per-frame loop and the head-anchored 3D content. Every frame:
-//   new video frame? -> detect face (RAW pose) -> One Euro filter (SMOOTHED pose)
+//   new video frame? -> upload it as the background -> detect face on that same
+//   frame (RAW pose) -> One Euro filter (SMOOTHED pose)
 //   -> move the head group -> adapt lighting to the room -> render -> timings.
 // Everything that happens per frame lives in the single useFrame callback below,
 // so the whole pipeline can be read top to bottom in one place.
 import { useFrame } from '@react-three/fiber';
-import { Suspense, useEffect, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { getCanonicalFace } from '../lib/canonicalFace.ts';
 import type { GlassesModel } from '../lib/catalog.ts';
@@ -14,10 +15,12 @@ import type { FaceTracker } from '../lib/faceTracker.ts';
 import { RoomLightSampler, type RoomLight } from '../lib/lighting.ts';
 import { setFade } from '../lib/materials.ts';
 import { VideoFrameClock, type PerformanceMonitor } from '../lib/performance.ts';
+import { VideoFrameTexture } from '../lib/videoFrameTexture.ts';
 import { PoseFilter } from '../lib/oneEuroFilter.ts';
 import { createPose, matrixFromPose, poseFromMediaPipeMatrix } from '../lib/poseMath.ts';
 import Glasses from './Glasses.tsx';
 import HeadOccluder from './HeadOccluder.tsx';
+import VideoBackground from './VideoBackground.tsx';
 
 interface TryOnSceneProps {
   video: HTMLVideoElement;
@@ -68,6 +71,10 @@ export default function TryOnScene(props: TryOnSceneProps) {
     keyLightOffset: new THREE.Vector3(...CONFIG.lighting.keyLightOffsetCm),
   });
 
+  // The background's copy of the camera frame (refreshed in the loop below).
+  const videoFrame = useMemo(() => new VideoFrameTexture(video), [video]);
+  useEffect(() => () => videoFrame.dispose(), [videoFrame]);
+
   // The key light aims at an object we move to the head each frame.
   useEffect(() => {
     if (keyLightRef.current && keyLightTargetRef.current) keyLightRef.current.target = keyLightTargetRef.current;
@@ -98,6 +105,13 @@ export default function TryOnScene(props: TryOnSceneProps) {
     const frameNoticedAt = performance.now();
     if (hasNewFrame) {
       frameState.lastVideoTime = video.currentTime;
+
+      // Upload this frame to the GPU now, immediately before tracking it. The camera
+      // can deliver a newer frame while tracking runs (often on phones, where it
+      // takes 20-40 ms); without this, the background could show that newer frame
+      // under glasses placed for the older one, so they jump around whenever the
+      // face moves quickly in the picture (e.g. a hand-held phone).
+      videoFrame.upload(gl);
 
       // 2. Face tracking -> RAW pose. Timed on its own: this is the "AI" cost.
       const inferenceStart = performance.now();
@@ -204,6 +218,7 @@ export default function TryOnScene(props: TryOnSceneProps) {
         shadow-camera-far={SHADOW_FAR_CM}
       />
       <object3D ref={keyLightTargetRef} />
+      <VideoBackground texture={videoFrame.texture} />
       {/* matrixAutoUpdate=false: we write the group's matrix ourselves from the pose. */}
       <group ref={headGroupRef} matrixAutoUpdate={false} visible={false}>
         <HeadOccluder visibleForDebug={showDebug} />

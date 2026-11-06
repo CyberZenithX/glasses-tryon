@@ -120,17 +120,18 @@ export const CONFIG = {
   // ears (see HeadOccluder.tsx). All values are in canonical-face centimetres:
   // +X = person's left, +Y = up, +Z = towards the camera; nose tip is at z ≈ 7.6.
   occluder: {
-    // The canonical face is slightly wider at the sides than a 140 mm frame's
-    // arms, which would make the arm nearest the camera vanish "into" the cheek on
-    // head turns. Behind faceSideStartZ the face's sides are pulled in to this
-    // fraction of their width (fully by z = 0). Lower = more of the near arm visible.
-    faceSideWidthScale: 0.9,
+    // The canonical face is slightly wider at the temples than the glasses' arms
+    // (about 6.5-7 cm out from the centre), which would hide the near arm just in
+    // front of the ear on head turns. Behind faceSideStartZ the face's sides are
+    // pulled in to this fraction of their width (fully by z = 0), which keeps them
+    // ~0.3 cm inside the arms. Lower = more of the near arm visible.
+    faceSideWidthScale: 0.85,
     faceSideStartZ: 3,
     // Ellipsoid for the skull behind the face. Kept narrower than the arms (so the
-    // near arm stays visible) and behind the forehead/eyes (so it never covers the
-    // frame front).
+    // near arm stays visible all the way to the ear) and behind the forehead/eyes
+    // (so it never covers the frame front).
     skullCentre: [0, 2, -4] as [number, number, number],
-    skullRadii: [6.8, 9, 8] as [number, number, number],
+    skullRadii: [6.4, 9, 8] as [number, number, number],
     // Ears: see CONFIG.ear (shared with the arm fitting, so both always agree).
   },
 
