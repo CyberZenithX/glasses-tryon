@@ -3,6 +3,7 @@
 // the per-frame loop never waits on React.
 import { useEffect, useState } from 'react';
 import { CONFIG } from '../lib/config.ts';
+import { TEST_SWITCHES } from '../lib/testSwitches.ts';
 import type { PerformanceMonitor, StatsSnapshot } from '../lib/performance.ts';
 
 // Targets from the brief, used to colour the numbers green/amber.
@@ -18,6 +19,13 @@ interface StatsOverlayProps {
   smoothingEnabled: boolean;
   onSmoothingChange: (enabled: boolean) => void;
 }
+
+// Rendering test switches that are on, so a screenshot of the panel shows them.
+const ACTIVE_RENDER_SWITCHES = [
+  TEST_SWITCHES.singlePixelRatio && 'dpr 1',
+  TEST_SWITCHES.noShadows && 'no shadows',
+  TEST_SWITCHES.noTransmission && 'no transmission',
+].filter(Boolean);
 
 const format = (value: number, digits = 0) => (Number.isFinite(value) ? value.toFixed(digits) : '–');
 
@@ -54,6 +62,7 @@ export default function StatsOverlay(props: StatsOverlayProps) {
       </label>
       <p className="muted stats-footnote">
         {videoWidth}×{videoHeight} · {delegate} · latency from {stats.latencySource}
+        {ACTIVE_RENDER_SWITCHES.length > 0 && ` · ${ACTIVE_RENDER_SWITCHES.join(' · ')}`}
       </p>
     </section>
   );

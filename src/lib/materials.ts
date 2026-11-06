@@ -4,6 +4,7 @@
 // model load, except setFade, which the per-frame loop calls while fading.
 import * as THREE from 'three';
 import type { FrameFinish, GlassesModel } from './catalog.ts';
+import { TEST_SWITCHES } from './testSwitches.ts';
 import { CONFIG } from './config.ts';
 
 interface FadeInfo {
@@ -138,5 +139,18 @@ export function prepareGlassesMaterials(root: THREE.Object3D, model: GlassesMode
       // big dark patch on the cheeks), so it casts none.
       object.castShadow = !modelHasOneMaterial;
     }
+    if (TEST_SWITCHES.noTransmission) removeTransmissionForTest(object.material as THREE.Material);
   });
+}
+
+// See-through by plain alpha blending, for the ?transmission=0 performance test.
+// Transmission makes three.js render the whole scene a second time each frame;
+// this measures how much that costs on a phone.
+const TEST_LENS_OPACITY = 0.2;
+function removeTransmissionForTest(material: THREE.Material): void {
+  if (!(material instanceof THREE.MeshPhysicalMaterial) || material.transmission === 0) return;
+  material.transmission = 0;
+  material.transparent = true;
+  material.opacity = Math.min(material.opacity, TEST_LENS_OPACITY);
+  material.depthWrite = false;
 }

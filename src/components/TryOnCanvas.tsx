@@ -11,6 +11,9 @@ import type { GlassesModel } from '../lib/catalog.ts';
 import type { FaceTracker } from '../lib/faceTracker.ts';
 import type { PerformanceMonitor } from '../lib/performance.ts';
 import TryOnScene from './TryOnScene.tsx';
+import { TEST_SWITCHES } from '../lib/testSwitches.ts';
+
+const SINGLE_PIXEL_RATIO = 1;
 
 interface TryOnCanvasProps {
   video: HTMLVideoElement;
@@ -27,9 +30,10 @@ export default function TryOnCanvas(sceneProps: TryOnCanvasProps) {
   return (
     <Canvas
       className="tryon-canvas"
-      dpr={CONFIG.rendering.devicePixelRatioRange}
+      // ?dpr=1 / ?shadows=0 are performance test switches (see testSwitches.ts).
+      dpr={TEST_SWITCHES.singlePixelRatio ? SINGLE_PIXEL_RATIO : CONFIG.rendering.devicePixelRatioRange}
       // Soft (PCF) shadow maps, for the frame's shadow on the face.
-      shadows="soft"
+      shadows={TEST_SWITCHES.noShadows ? false : 'soft'}
       // Neutral tone mapping keeps frame colours true (ACES, the default, shifts
       // hues and crushes blacks, which makes black acetate look flat).
       onCreated={({ gl }) => {
