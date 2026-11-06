@@ -35,6 +35,23 @@ export const CONFIG = {
     farCm: 10000,
   },
 
+  // One Euro filter settings (see oneEuroFilter.ts). Tuning recipe: hold still and
+  // lower minCutoff until the glasses stop shaking; then move your head and raise
+  // beta until they stop trailing behind. Run the Hold-still / Head-turn tests to measure.
+  smoothing: {
+    position: {
+      minCutoff: 1.0, // Hz when still. Lower = steadier, but slow drifts lag more.
+      beta: 0.15, // per (cm/s). Higher = glasses keep up better when you move.
+      derivativeCutoff: 1.0,
+    },
+    rotation: {
+      // Quaternion components change ~0.5 per radian, so beta is larger here.
+      minCutoff: 1.5,
+      beta: 6.0,
+      derivativeCutoff: 1.0,
+    },
+  },
+
   glasses: {
     // Draco decoder for compressed .glb files, served locally (drei would use a CDN).
     dracoDecoderPath: '/draco/',

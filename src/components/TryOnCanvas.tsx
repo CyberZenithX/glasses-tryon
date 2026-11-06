@@ -17,6 +17,7 @@ interface TryOnCanvasProps {
   tracker: FaceTracker;
   model: GlassesModel | null;
   monitor: PerformanceMonitor;
+  smoothingEnabled: boolean;
   showDebug: boolean;
   debugCanvas: HTMLCanvasElement | null;
   onFaceVisibleChange: (visible: boolean) => void;

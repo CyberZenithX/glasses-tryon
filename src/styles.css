@@ -133,3 +133,4 @@ html, body, #root { margin: 0; height: 100%; overflow: hidden; background: #0b0b
 .stats-panel .warn { color: #ffb84d; }
 .muted { opacity: 0.6; }
 .stats-footnote { margin: 8px 0 0; font-size: 0.72rem; }
+.stats-toggle { display: flex; align-items: center; gap: 8px; margin-top: 8px; cursor: pointer; }

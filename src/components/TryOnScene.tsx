@@ -1,5 +1,6 @@
 // The per-frame loop and the head-anchored 3D content. Every frame:
-//   new video frame? -> detect face (RAW pose) -> move the head group -> render -> timings.
+//   new video frame? -> detect face (RAW pose) -> One Euro filter (SMOOTHED pose)
+//   -> move the head group -> render -> timings.
 // Everything that happens per frame lives in the single useFrame callback below,
 // so the whole pipeline can be read top to bottom in one place.
 import { useFrame } from '@react-three/fiber';
@@ -12,6 +13,7 @@ import { clearDebugCanvas, drawLandmarks } from '../lib/debugDraw.ts';
 import type { FaceTracker } from '../lib/faceTracker.ts';
 import { setFade } from '../lib/materials.ts';
 import { VideoFrameClock, type PerformanceMonitor } from '../lib/performance.ts';
+import { PoseFilter } from '../lib/oneEuroFilter.ts';
 import { createPose, matrixFromPose, poseFromMediaPipeMatrix } from '../lib/poseMath.ts';
 import Glasses from './Glasses.tsx';
 
@@ -20,6 +22,7 @@ interface TryOnSceneProps {
   tracker: FaceTracker;
   model: GlassesModel | null;
   monitor: PerformanceMonitor;
+  smoothingEnabled: boolean;
   showDebug: boolean;
   debugCanvas: HTMLCanvasElement | null;
   onFaceVisibleChange: (visible: boolean) => void;
@@ -30,7 +33,7 @@ interface TryOnSceneProps {
 const RENDER_PRIORITY = 1;
 
 export default function TryOnScene(props: TryOnSceneProps) {
-  const { video, tracker, model, monitor, showDebug, debugCanvas, onFaceVisibleChange } = props;
+  const { video, tracker, model, monitor, smoothingEnabled, showDebug, debugCanvas, onFaceVisibleChange } = props;
   // The head group is moved by setting its matrix directly from the pose each frame.
   const headGroupRef = useRef<THREE.Group>(null);
   const glassesGroupRef = useRef<THREE.Group>(null);
@@ -39,7 +42,9 @@ export default function TryOnScene(props: TryOnSceneProps) {
   // needing a React re-render, and reused so nothing is allocated per frame.
   const frameStateRef = useRef({
     matrix: new THREE.Matrix4(),
-    rawPose: createPose(),
+    rawPose: createPose(), // straight from MediaPipe (kept for the stability tests)
+    smoothedPose: createPose(), // after the One Euro filter (what the glasses use)
+    poseFilter: new PoseFilter(CONFIG.smoothing.position, CONFIG.smoothing.rotation),
     lastVideoTime: -1,
     faceVisible: false,
     fade: 0, // 0 = glasses hidden, 1 = fully shown
@@ -77,8 +82,16 @@ export default function TryOnScene(props: TryOnSceneProps) {
       inferenceMs = performance.now() - inferenceStart;
       if (detection) {
         poseFromMediaPipeMatrix(detection.poseMatrix, frameState.matrix, frameState.rawPose);
-        // 3. Move everything attached to the head (glasses, occluder, debug mesh).
-        matrixFromPose(frameState.rawPose, headGroup.matrix);
+        // 3. Smooth the pose. Both versions are kept: the tests compare them.
+        const MS_PER_SECOND = 1000;
+        frameState.poseFilter.filter(frameState.rawPose, inferenceStart / MS_PER_SECOND, frameState.smoothedPose);
+        // 4. Move everything attached to the head (glasses, occluder, debug mesh).
+        const shownPose = smoothingEnabled ? frameState.smoothedPose : frameState.rawPose;
+        matrixFromPose(shownPose, headGroup.matrix);
+      } else {
+        // Face lost: forget the filter history, so when the face comes back the
+        // glasses snap to it instead of sliding over from where it was last seen.
+        frameState.poseFilter.reset();
       }
       if (showDebug && debugCanvas) drawLandmarks(debugCanvas, detection?.landmarks ?? null);
 
@@ -89,7 +102,7 @@ export default function TryOnScene(props: TryOnSceneProps) {
       }
     }
 
-    // 4. Fade the glasses in/out instead of popping. When the face is lost the
+    // 5. Fade the glasses in/out instead of popping. When the face is lost the
     //    head group keeps its last pose while it fades.
     const fadeStep = deltaSec / CONFIG.glasses.fadeDurationSec;
     const targetFade = frameState.faceVisible ? 1 : 0;
@@ -103,10 +116,10 @@ export default function TryOnScene(props: TryOnSceneProps) {
     frameState.fade = fade;
     headGroup.visible = fade > 0 || (showDebug && frameState.faceVisible);
 
-    // 5. Render video background + head content in one pass.
+    // 6. Render video background + head content in one pass.
     gl.render(scene, camera);
 
-    // 6. Timings for the stats panel. Latency = frame arrival -> render submitted.
+    // 7. Timings for the stats panel. Latency = frame arrival -> render submitted.
     //    It cannot include the camera's own exposure/USB delay or the display's
     //    scan-out, which the browser does not expose (see docs/PERFORMANCE.md).
     if (hasNewFrame) {

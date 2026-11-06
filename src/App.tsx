@@ -25,6 +25,7 @@ export default function App() {
   const [debugCanvas, setDebugCanvas] = useState<HTMLCanvasElement | null>(null);
   const [showDebug, setShowDebug] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [smoothingEnabled, setSmoothingEnabled] = useState(true);
   // One monitor for the app's lifetime: the frame loop writes to it, the panel reads it.
   const [monitor] = useState(() => new PerformanceMonitor());
   const [faceVisible, setFaceVisible] = useState(false);
@@ -107,6 +108,7 @@ export default function App() {
             tracker={session.tracker}
             model={CATALOG[0] ?? null}
             monitor={monitor}
+            smoothingEnabled={smoothingEnabled}
             showDebug={showDebug}
             debugCanvas={debugCanvas}
             onFaceVisibleChange={setFaceVisible}
@@ -129,6 +131,8 @@ export default function App() {
               delegate={session.tracker.delegate}
               videoWidth={session.video.videoWidth}
               videoHeight={session.video.videoHeight}
+              smoothingEnabled={smoothingEnabled}
+              onSmoothingChange={setSmoothingEnabled}
             />
           )}
           <div className="toolbar">

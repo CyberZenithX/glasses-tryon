@@ -15,11 +15,14 @@ interface StatsOverlayProps {
   delegate: 'GPU' | 'CPU';
   videoWidth: number;
   videoHeight: number;
+  smoothingEnabled: boolean;
+  onSmoothingChange: (enabled: boolean) => void;
 }
 
 const format = (value: number, digits = 0) => (Number.isFinite(value) ? value.toFixed(digits) : '–');
 
-export default function StatsOverlay({ monitor, delegate, videoWidth, videoHeight }: StatsOverlayProps) {
+export default function StatsOverlay(props: StatsOverlayProps) {
+  const { monitor, delegate, videoWidth, videoHeight, smoothingEnabled, onSmoothingChange } = props;
   const [stats, setStats] = useState<StatsSnapshot>(() => monitor.snapshot());
 
   useEffect(() => {
@@ -44,6 +47,11 @@ export default function StatsOverlay({ monitor, delegate, videoWidth, videoHeigh
           {format(stats.latencyAvgMs, 1)} ms <span className="muted">p95 {format(stats.latencyP95Ms, 1)}</span>
         </dd>
       </dl>
+      {/* Turning smoothing off shows the raw MediaPipe pose: useful to see the jitter it removes. */}
+      <label className="stats-toggle">
+        <input type="checkbox" checked={smoothingEnabled} onChange={(e) => onSmoothingChange(e.target.checked)} />
+        Smoothing (One Euro)
+      </label>
       <p className="muted stats-footnote">
         {videoWidth}×{videoHeight} · {delegate} · latency from {stats.latencySource}
       </p>
