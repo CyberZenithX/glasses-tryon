@@ -411,3 +411,27 @@ Finish with a short list of likely interview questions and plain-English answers
 - [ ] Deployed on Vercel over HTTPS.
 - [ ] I can explain the architecture and what each main function does. If any part is too complex for that, simplify it.
 ```
+# Adding credits & 3d glasses files prompt
+```
+Here are 6 glasses. I've already added them to public/models/ on github.:
+
+glasses.glb
+"Glasses" (https://skfb.ly/6Ruqv) by Marius.Eder is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+
+glasses (1).glb
+"Glasses" (https://skfb.ly/6ZUC6) by Peter Tilley is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+
+glasses (2).glb
+"Glasses" (https://skfb.ly/oyp9A) by AlbertVictory is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+
+heart-shaped_glasses.glb
+"Heart-shaped glasses" (https://skfb.ly/6ZNXP) by 🎀 ★彡[ꜰᴇʟɪx ʏᴀᴅᴏᴍɪ]彡★ 🎀 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+
+glasses (3).glb
+"Glasses" (https://skfb.ly/6StPQ) by Dokono Kinokoda is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+
+glasses (4).glb
+"Glasses" (https://skfb.ly/oHPPq) by C.U.V is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+
+I couldn't find any widths (mm). Make sure you conduct checks first if using 140mm could have probable negative consequences.
+```
