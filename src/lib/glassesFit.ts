@@ -145,17 +145,20 @@ export function bendTemplesToEars(model: THREE.Object3D, fit: GlassesFit): void 
   });
 
   // 2. Aim at the ear: slopes (cm per cm travelled back) for height and width.
-  //    Behind the ear root the arm stops spreading outwards and runs along the
-  //    skull, tucked behind the ear (and inside the ear occluder, see ear.ts).
+  //    Behind the ear root the arm stops following those slopes: it runs along the
+  //    skull and bends down, tucked behind the ear (inside the ear occluder, ear.ts).
   const aim = armSlopesToEar(straightened.flat(), fit.hingeZ);
+  const dropBehindEar = Math.tan(THREE.MathUtils.degToRad(CONFIG.ear.armDropBehindEarDeg));
   for (const [index, { mesh, meshToFace }] of meshes.entries()) {
     const faceToMesh = meshToFace.clone().invert();
     const positions = mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
     for (const [i, point] of (straightened[index] ?? []).entries()) {
       const behindHinge = fit.hingeZ - point.z;
       if (behindHinge > 0) {
-        point.y -= behindHinge * aim.down;
-        point.x += (Math.sign(point.x) || 1) * Math.min(behindHinge, aim.earBehindHinge) * aim.out;
+        const toEar = Math.min(behindHinge, aim.earBehindHinge); // part in front of the ear root
+        const pastEar = behindHinge - toEar; // part behind it
+        point.y -= toEar * aim.down + pastEar * dropBehindEar;
+        point.x += (Math.sign(point.x) || 1) * toEar * aim.out;
       }
       point.applyMatrix4(faceToMesh);
       positions.setXYZ(i, point.x, point.y, point.z);

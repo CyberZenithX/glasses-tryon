@@ -87,6 +87,11 @@ export const CONFIG = {
     // Half-width (out from the head), half-height and half-depth. Deep enough to
     // hold the arm tips (which end ~3 cm behind the root).
     occluderRadiiCm: [1.5, 3.5, 2.5] as [number, number, number],
+    // Behind the ear root, arms bend down by this angle, like a real temple tip
+    // hooking behind the ear. Without it an arm that rises to reach the ear kept
+    // rising behind it and its tip poked out above the ear (seen from slightly
+    // above). Everything behind the root is hidden, so this only keeps it hidden.
+    armDropBehindEarDeg: 25,
   },
 
   glasses: {
