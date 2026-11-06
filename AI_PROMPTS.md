@@ -1,4 +1,4 @@
-# The Build Prompt
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/a30fd62a-fddd-469d-bda6-c630269722ea" /># The Build Prompt
 > **Note:** This prompt was written by Claude and reviewed by me after I finished conducting research on Option A & B and the architecure required to build the most seamless AI-Powered Glasses Try-on Web App with minimal compute and cost: 
 
 ```
@@ -434,4 +434,70 @@ glasses (4).glb
 "Glasses" (https://skfb.ly/oHPPq) by C.U.V is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
 
 I couldn't find any widths (mm). Make sure you conduct checks first if using 140mm could have probable negative consequences.
+```
+
+
+*Hours of iterative prompting later. (nothing significant, just visual tests and refining MediaPipe matrices and calculations to get the look right on multiple faces.)*
+
+# Design Prompt 
+```
+create a new git branch with these changes and push:
+
+Implement Capture & Compare
+Implement a complete Capture & Compare feature in my existing Glasses Try-On application.
+Repository: `CyberZenithX/glasses-tryon`
+Use the attached UI reference as inspiration. Create a polished, modern interface that feels like a natural extension of the existing application.
+User experience
+
+1. Add a prominent Capture & Compare button to the existing live try-on screen.
+2. When clicked, capture the user's current photograph and corresponding face pose.
+3. Enter a dedicated Comparison Mode.
+4. Allow users to select 2–3 different glasses models from the existing catalogue.
+5. Display each selected model on the exact same captured photograph and face pose.
+6. Allow users to remove or replace frames.
+7. Add Retake Photo, Back to Live, and Save Comparison buttons.
+8. Allow users to download their comparison as a single, neatly designed PNG.
+
+Technical requirements
+
+* Study the existing architecture before making changes.
+* Reuse the existing Three.js rendering pipeline, glasses models, fitting calculations and materials.
+* Capture the photograph and corresponding face transformation from the same processed camera frame.
+* Preserve the correct image orientation, aspect ratio and glasses alignment.
+* Do not create additional MediaPipe trackers.
+* Do not create three independent Three.js rendering contexts.
+* Render comparison models sequentially using one renderer, then save each result as a static image.
+* Display the resulting images together without continuous 3D rendering.
+* Dispose of temporary GPU and image resources appropriately.
+* Keep all image processing local to the browser. Do not introduce external APIs or image uploads.
+
+UI requirements
+Follow the attached reference image's visual direction:
+
+* Dark navy/charcoal interface.
+* Subtle borders and rounded cards.
+* Purple/indigo accent colour.
+* Large comparison photographs.
+* Clear frame-selection controls.
+* Attractive, prominent action buttons.
+* Responsive desktop and mobile layouts.
+
+The comparison photographs should be the visual focus. Avoid unnecessary controls and decoration.
+Constraints
+
+* Preserve the existing live try-on functionality.
+* Do not unnecessarily refactor working code.
+* Do not implement unrelated features such as fit sliders, product specifications or AI styling.
+* Do not introduce unnecessary dependencies.
+* Keep the implementation maintainable and properly typed.
+* Avoid interfering with my ongoing mobile performance optimization work.
+
+Completion criteria
+A user must be able to capture one photograph, select three different glasses designs, compare them accurately side by side and download the comparison as one PNG.
+Implement the actual functionality, not just the UI mockup.
+Run the existing type-check, lint, tests and production build. Fix any issues introduced by your changes.
+Finally, explain the files changed and how the capture synchronization and sequential rendering work.
+
+Ask me questions if needed. 
+NOTE: The attached image is a suggestion which may have flaws, not a guide to follow.
 ```
