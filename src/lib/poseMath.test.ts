@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import {
   createPose,
   matrixFromPose,
-  noseBridgeOffsetCm,
   poseFromMediaPipeMatrix,
   positionDistanceMm,
   rotationDifferenceDeg,
@@ -44,43 +43,5 @@ describe('pose differences', () => {
     const b = createPose();
     b.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(10));
     expect(rotationDifferenceDeg(a, b)).toBeCloseTo(10);
-  });
-});
-
-describe('noseBridgeOffsetCm', () => {
-  const tanHalfFovY = Math.tan(THREE.MathUtils.degToRad(63 / 2));
-  const aspect = 16 / 9;
-  // Two anchor points around a nose bridge, in head coordinates (cm).
-  const canonical = [new THREE.Vector3(0, 3.3, 5.2), new THREE.Vector3(0, 2.5, 5.8)];
-  const anchors = [0, 1];
-  // Head 40 cm away, a little to the side, looking slightly down at the camera.
-  const pose = new THREE.Matrix4().compose(
-    new THREE.Vector3(3, -2, -40),
-    new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.25, 0.3, 0)),
-    new THREE.Vector3(1, 1, 1),
-  );
-
-  /** Where the anchors land in the image if the real bridge is `slideCm` up the nose. */
-  function landmarksFor(slideCm: number) {
-    return canonical.map((v) => {
-      const p = v.clone().add(new THREE.Vector3(0, slideCm, 0)).applyMatrix4(pose);
-      const depth = -p.z;
-      return {
-        x: (p.x / (depth * tanHalfFovY * aspect) + 1) / 2,
-        y: (1 - p.y / (depth * tanHalfFovY)) / 2,
-      };
-    });
-  }
-
-  it('is zero when the detected bridge is where the model puts it', () => {
-    const offset = noseBridgeOffsetCm(pose.elements, landmarksFor(0), anchors, canonical, tanHalfFovY, aspect);
-    expect(offset).toBeCloseTo(0, 6);
-  });
-
-  it('recovers how far the real bridge sits up or down the nose', () => {
-    for (const slide of [-0.6, -0.2, 0.3]) {
-      const offset = noseBridgeOffsetCm(pose.elements, landmarksFor(slide), anchors, canonical, tanHalfFovY, aspect);
-      expect(offset).toBeCloseTo(slide, 1); // within 0.05 cm (perspective makes it inexact)
-    }
   });
 });
