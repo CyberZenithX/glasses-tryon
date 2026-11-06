@@ -14,6 +14,17 @@ export const CONFIG = {
     idealFrameRate: 30,
   },
 
+  tracker: {
+    // Files are served from this app's own host (copied into /public), never a CDN.
+    wasmBasePath: '/mediapipe/wasm',
+    modelPath: '/mediapipe/face_landmarker.task',
+    // Confidence thresholds (0..1). Higher = fewer false faces but tracking drops
+    // out sooner in poor light or at steep angles. Lower = the opposite.
+    minFaceDetectionConfidence: 0.5,
+    minFacePresenceConfidence: 0.5,
+    minTrackingConfidence: 0.5,
+  },
+
   camera: {
     // These three values MUST match the virtual camera MediaPipe assumes when it
     // computes the face transformation matrix (see mediapipe/tasks/cc/vision/
@@ -22,5 +33,11 @@ export const CONFIG = {
     verticalFovDeg: 63,
     nearCm: 1, // MediaPipe's metric space is in centimetres
     farCm: 10000,
+  },
+
+  debug: {
+    landmarkRadiusPx: 1.6, // size of each landmark dot in the debug view
+    landmarkColor: '#3ee6a8',
+    poseAxesLengthCm: 8, // length of the red/green/blue head axes in the debug view
   },
 } as const;

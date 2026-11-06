@@ -1,49 +1,84 @@
-// Top-level layout and UI state. Starts the camera, then shows the mirrored
-// "stage" (webcam + 3D glasses) with overlays on top. The stage keeps the video's
-// aspect ratio and is scaled to cover the screen, like a camera app.
+// Top-level layout and UI state. Starts the camera, then the face tracker, then
+// shows the mirrored "stage" (webcam + 3D glasses) with overlays on top. The stage
+// keeps the video's aspect ratio and is scaled to cover the screen, like a camera app.
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import StatusScreen, { type AppStatus } from './components/StatusScreen.tsx';
 import TryOnCanvas from './components/TryOnCanvas.tsx';
+import { createFaceTracker, type FaceTracker } from './lib/faceTracker.ts';
 import { startWebcam, stopWebcam, WebcamError } from './lib/webcam.ts';
+
+interface Session {
+  video: HTMLVideoElement;
+  tracker: FaceTracker;
+}
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [status, setStatus] = useState<AppStatus>({ kind: 'starting-camera' });
+  // The playing video + loaded tracker. Stored in state (not a ref) so the 3D
+  // canvas renders as soon as both are ready.
+  const [session, setSession] = useState<Session | null>(null);
   const [videoAspect, setVideoAspect] = useState<number | null>(null);
-  // The <video> element, stored in state once it is playing, so the 3D canvas
-  // re-renders when it becomes available (refs alone do not trigger renders).
-  const [liveVideo, setLiveVideo] = useState<HTMLVideoElement | null>(null);
+  const [debugCanvas, setDebugCanvas] = useState<HTMLCanvasElement | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
+  const [faceVisible, setFaceVisible] = useState(false);
   // Bumping this re-runs the start-up effect ("Try again" button).
   const [attempt, setAttempt] = useState(0);
 
+  // Start-up sequence: camera first (so the permission prompt appears right away),
+  // then the face tracking model.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    // React may run this effect twice in development; `cancelled` makes sure a
-    // camera that finishes starting after cleanup is released immediately.
+    // React may run this effect twice in development; `cancelled` makes sure
+    // anything that finishes starting after cleanup is released immediately.
     let cancelled = false;
     let stream: MediaStream | null = null;
+    let tracker: FaceTracker | null = null;
 
-    startWebcam(video)
-      .then((startedStream) => {
-        stream = startedStream;
-        if (cancelled) return stopWebcam(stream);
-        setVideoAspect(video.videoWidth / video.videoHeight);
-        setLiveVideo(video);
-        setStatus({ kind: 'ready' });
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
+    const start = async () => {
+      try {
+        stream = await startWebcam(video);
+      } catch (error) {
+        if (cancelled) return; // e.g. play() interrupted by our own cleanup
         console.warn('Camera failed to start:', error);
         setStatus({ kind: 'error', reason: error instanceof WebcamError ? error.reason : 'unknown' });
-      });
+        return;
+      }
+      if (cancelled) return;
+      setVideoAspect(video.videoWidth / video.videoHeight);
+      setStatus({ kind: 'loading-tracker' });
+
+      try {
+        tracker = await createFaceTracker();
+      } catch (error) {
+        if (cancelled) return;
+        console.warn('Face tracker failed to load:', error);
+        setStatus({ kind: 'error', reason: 'tracker-failed' });
+        return;
+      }
+      if (cancelled) return tracker.close();
+      setSession({ video, tracker });
+      setStatus({ kind: 'ready' });
+    };
+    void start();
 
     return () => {
       cancelled = true;
-      setLiveVideo(null);
+      setSession(null);
+      tracker?.close();
       stopWebcam(stream, video);
     };
   }, [attempt]);
+
+  // Keyboard shortcut for the debug view (handy while recording / presenting).
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'd') setShowDebug((on) => !on);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const retry = () => {
     setStatus({ kind: 'starting-camera' });
@@ -55,12 +90,43 @@ export default function App() {
 
   return (
     <main className="app">
-      {/* The stage is mirrored as ONE unit (video + 3D canvas), so the selfie view
-          feels natural and the glasses stay aligned with the face. */}
+      {/* The stage is mirrored as ONE unit (video + 3D + debug dots), so the selfie
+          view feels natural and everything stays aligned with the face. */}
       <div className="stage" style={stageStyle}>
         <video ref={videoRef} className="stage-video" playsInline muted />
-        {status.kind === 'ready' && liveVideo && <TryOnCanvas video={liveVideo} />}
+        {session && (
+          <TryOnCanvas
+            video={session.video}
+            tracker={session.tracker}
+            showDebug={showDebug}
+            debugCanvas={debugCanvas}
+            onFaceVisibleChange={setFaceVisible}
+          />
+        )}
+        <canvas
+          ref={setDebugCanvas}
+          className="debug-canvas"
+          width={session?.video.videoWidth ?? 0}
+          height={session?.video.videoHeight ?? 0}
+          hidden={!showDebug}
+        />
       </div>
+
+      {status.kind === 'ready' && (
+        <>
+          <div className="toolbar">
+            <button
+              type="button"
+              className={`chip ${showDebug ? 'chip-on' : ''}`}
+              aria-pressed={showDebug}
+              onClick={() => setShowDebug((on) => !on)}
+            >
+              Debug
+            </button>
+          </div>
+          {!faceVisible && <p className="face-hint">Look at the camera to try on glasses</p>}
+        </>
+      )}
       <StatusScreen status={status} onRetry={retry} />
     </main>
   );
