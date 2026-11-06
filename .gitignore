@@ -3,5 +3,6 @@ dist
 *.local
 .DS_Store
 .vercel
-# Copied from node_modules by scripts/copy-mediapipe.mjs
+# Copied from node_modules by scripts/copy-decoders.mjs
 public/mediapipe/wasm
+public/draco

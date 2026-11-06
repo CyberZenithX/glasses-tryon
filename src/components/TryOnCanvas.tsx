@@ -3,6 +3,7 @@
 // aspect ratio as the video, so a pose from MediaPipe lands on the right pixels.
 import { Canvas } from '@react-three/fiber';
 import { CONFIG } from '../lib/config.ts';
+import type { GlassesModel } from '../lib/catalog.ts';
 import type { FaceTracker } from '../lib/faceTracker.ts';
 import TryOnScene from './TryOnScene.tsx';
 import VideoBackground from './VideoBackground.tsx';
@@ -13,6 +14,7 @@ const DEVICE_PIXEL_RATIO_RANGE: [number, number] = [1, 2];
 interface TryOnCanvasProps {
   video: HTMLVideoElement;
   tracker: FaceTracker;
+  model: GlassesModel | null;
   showDebug: boolean;
   debugCanvas: HTMLCanvasElement | null;
   onFaceVisibleChange: (visible: boolean) => void;

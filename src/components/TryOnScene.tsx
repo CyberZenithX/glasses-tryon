@@ -3,16 +3,21 @@
 // Everything that happens per frame lives in the single useFrame callback below,
 // so the whole pipeline can be read top to bottom in one place.
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useRef } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { getCanonicalFace } from '../lib/canonicalFace.ts';
+import type { GlassesModel } from '../lib/catalog.ts';
 import { CONFIG } from '../lib/config.ts';
 import { clearDebugCanvas, drawLandmarks } from '../lib/debugDraw.ts';
 import type { FaceTracker } from '../lib/faceTracker.ts';
+import { setFade } from '../lib/materials.ts';
 import { createPose, matrixFromPose, poseFromMediaPipeMatrix } from '../lib/poseMath.ts';
+import Glasses from './Glasses.tsx';
 
 interface TryOnSceneProps {
   video: HTMLVideoElement;
   tracker: FaceTracker;
+  model: GlassesModel | null;
   showDebug: boolean;
   debugCanvas: HTMLCanvasElement | null;
   onFaceVisibleChange: (visible: boolean) => void;
@@ -22,59 +27,96 @@ interface TryOnSceneProps {
 // so detection, pose update and render happen in a fixed, known order.
 const RENDER_PRIORITY = 1;
 
-export default function TryOnScene({ video, tracker, showDebug, debugCanvas, onFaceVisibleChange }: TryOnSceneProps) {
+export default function TryOnScene(props: TryOnSceneProps) {
+  const { video, tracker, model, showDebug, debugCanvas, onFaceVisibleChange } = props;
   // The head group is moved by setting its matrix directly from the pose each frame.
   const headGroupRef = useRef<THREE.Group>(null);
+  const glassesGroupRef = useRef<THREE.Group>(null);
 
-  // Objects reused every frame (allocating per frame causes garbage-collection stutters).
-  // Kept in a ref because it changes every frame without needing a React re-render.
+  // Per-frame working state. Kept in a ref because it changes every frame without
+  // needing a React re-render, and reused so nothing is allocated per frame.
   const frameStateRef = useRef({
     matrix: new THREE.Matrix4(),
     rawPose: createPose(),
     lastVideoTime: -1,
     faceVisible: false,
+    fade: 0, // 0 = glasses hidden, 1 = fully shown
   });
 
   useEffect(() => {
     if (!showDebug && debugCanvas) clearDebugCanvas(debugCanvas);
   }, [showDebug, debugCanvas]);
 
-  useFrame(({ gl, scene, camera }) => {
+  useFrame(({ gl, scene, camera }, deltaSec) => {
     const headGroup = headGroupRef.current;
     const frameState = frameStateRef.current;
     if (!headGroup) return;
 
     // 1. Only run the model when the camera has delivered a new frame.
     //    The screen may refresh at 60-120 Hz while the camera gives ~30 fps.
-    const hasNewFrame = video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.currentTime !== frameState.lastVideoTime;
+    const hasNewFrame =
+      video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.currentTime !== frameState.lastVideoTime;
     if (hasNewFrame) {
       frameState.lastVideoTime = video.currentTime;
 
       // 2. Face tracking -> RAW pose.
       const detection = tracker.detect(video, performance.now());
-      const faceVisible = detection !== null;
       if (detection) {
         poseFromMediaPipeMatrix(detection.poseMatrix, frameState.matrix, frameState.rawPose);
-        // 3. Move everything attached to the head (glasses, occluder, debug axes).
+        // 3. Move everything attached to the head (glasses, occluder, debug mesh).
         matrixFromPose(frameState.rawPose, headGroup.matrix);
       }
-      headGroup.visible = faceVisible;
+      if (showDebug && debugCanvas) drawLandmarks(debugCanvas, detection?.landmarks ?? null);
+
+      const faceVisible = detection !== null;
       if (faceVisible !== frameState.faceVisible) {
         frameState.faceVisible = faceVisible;
         onFaceVisibleChange(faceVisible);
       }
-
-      if (showDebug && debugCanvas) drawLandmarks(debugCanvas, detection?.landmarks ?? null);
     }
 
-    // 4. Render video background + head content in one pass.
+    // 4. Fade the glasses in/out instead of popping. When the face is lost the
+    //    head group keeps its last pose while it fades.
+    const fadeStep = deltaSec / CONFIG.glasses.fadeDurationSec;
+    const targetFade = frameState.faceVisible ? 1 : 0;
+    const fade = THREE.MathUtils.clamp(
+      frameState.fade + Math.sign(targetFade - frameState.fade) * fadeStep,
+      0,
+      1,
+    );
+    const glassesGroup = glassesGroupRef.current;
+    if (glassesGroup && fade !== frameState.fade) setFade(glassesGroup, fade);
+    frameState.fade = fade;
+    headGroup.visible = fade > 0 || (showDebug && frameState.faceVisible);
+
+    // 5. Render video background + head content in one pass.
     gl.render(scene, camera);
   }, RENDER_PRIORITY);
 
   return (
     // matrixAutoUpdate=false: we write the group's matrix ourselves from the pose.
     <group ref={headGroupRef} matrixAutoUpdate={false} visible={false}>
-      {showDebug && <axesHelper args={[CONFIG.debug.poseAxesLengthCm]} />}
+      <group ref={glassesGroupRef}>
+        {model && (
+          <Suspense fallback={null}>
+            <Glasses key={model.id} model={model} />
+          </Suspense>
+        )}
+      </group>
+      {showDebug && <DebugHead />}
     </group>
+  );
+}
+
+// Debug view: the head axes and MediaPipe's canonical face as a wireframe. If the
+// wireframe sits exactly on the face, the camera matching and pose are correct.
+function DebugHead() {
+  return (
+    <>
+      <axesHelper args={[CONFIG.debug.poseAxesLengthCm]} />
+      <mesh geometry={getCanonicalFace().geometry}>
+        <meshBasicMaterial color={CONFIG.debug.faceWireframeColor} wireframe transparent opacity={0.35} />
+      </mesh>
+    </>
   );
 }

@@ -35,9 +35,26 @@ export const CONFIG = {
     farCm: 10000,
   },
 
+  glasses: {
+    // Draco decoder for compressed .glb files, served locally (drei would use a CDN).
+    dracoDecoderPath: '/draco/',
+    // How far in front of the nose-bridge skin the front of the frame sits, in cm.
+    // Bigger = glasses float further from the face.
+    frontGapFromNoseBridgeCm: 0.6,
+    // Real glasses tilt slightly, with the lower rims closer to the cheeks
+    // ("pantoscopic tilt"), and this tilt is added to every model. Positive = lower rims move in.
+    pantoscopicTiltDeg: 6,
+    // Depth (cm) of the slice at the front of a model that counts as "the frame
+    // front" when auto-centring the lenses on the eyes. Temples are ignored.
+    frontSliceDepthCm: 1.5,
+    // How fast the glasses fade in/out when a face appears/disappears (seconds).
+    fadeDurationSec: 0.25,
+  },
+
   debug: {
     landmarkRadiusPx: 1.6, // size of each landmark dot in the debug view
     landmarkColor: '#3ee6a8',
     poseAxesLengthCm: 8, // length of the red/green/blue head axes in the debug view
+    faceWireframeColor: '#3ee6a8', // canonical face mesh drawn on the face in debug view
   },
 } as const;

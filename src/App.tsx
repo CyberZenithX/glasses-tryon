@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import StatusScreen, { type AppStatus } from './components/StatusScreen.tsx';
 import TryOnCanvas from './components/TryOnCanvas.tsx';
+import { CATALOG } from './lib/catalog.ts';
 import { createFaceTracker, type FaceTracker } from './lib/faceTracker.ts';
 import { startWebcam, stopWebcam, WebcamError } from './lib/webcam.ts';
 
@@ -98,6 +99,7 @@ export default function App() {
           <TryOnCanvas
             video={session.video}
             tracker={session.tracker}
+            model={CATALOG[0] ?? null}
             showDebug={showDebug}
             debugCanvas={debugCanvas}
             onFaceVisibleChange={setFaceVisible}
