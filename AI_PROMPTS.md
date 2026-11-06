@@ -1,4 +1,4 @@
-<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/a30fd62a-fddd-469d-bda6-c630269722ea" /># The Build Prompt
+# The Build Prompt
 > **Note:** This prompt was written by Claude and reviewed by me after I finished conducting research on Option A & B and the architecure required to build the most seamless AI-Powered Glasses Try-on Web App with minimal compute and cost: 
 
 ```
@@ -501,3 +501,4 @@ Finally, explain the files changed and how the capture synchronization and seque
 Ask me questions if needed. 
 NOTE: The attached image is a suggestion which may have flaws, not a guide to follow.
 ```
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/a30fd62a-fddd-469d-bda6-c630269722ea" />
