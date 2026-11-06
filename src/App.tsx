@@ -206,7 +206,7 @@ export default function App() {
               onSmoothingChange={setSmoothingEnabled}
             />
           )}
-          {!showStats && !IS_EMBED && <PrivacyNote />}
+          {!showStats && !showStyle && !IS_EMBED && <PrivacyNote />}
           {!IS_EMBED && (
             <div className="toolbar">
               <button
