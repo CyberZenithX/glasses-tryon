@@ -60,20 +60,22 @@ export const CONFIG = {
 
   // Where the ears are on the canonical face (cm; +X = person's left, +Y = up,
   // +Z = towards the camera; eye centre is at y ≈ 2.6, nose tip at z ≈ 7.6).
-  // MediaPipe has no ear landmarks, so this is a fixed average position, checked
-  // against real profile views: the ear starts just behind the back edge of the
-  // face mesh (z ≈ -2.4), with its top at about eye level.
+  // MediaPipe has no ear landmarks, so this is a fixed average position. Checked
+  // two ways: real frames bend over the ear ~9.5-10 cm behind the hinge, and in
+  // real head-turn screenshots the arm must pass ~1 cm beyond the front edge of
+  // the ear (which is just behind the back edge of the face mesh, z ≈ -2.4).
   ear: {
     // "Ear root": where the top of the ear joins the head; temple arms rest here.
     // Arms pass over the ear above this point, then their tips go behind the ear.
     // Raise Y if arms cut through the ear; lower it if they float above it.
     // Move Z back (more negative) if arm tips vanish before reaching the ear.
-    rootCm: [7.2, 2.8, -3.2] as [number, number, number],
+    rootCm: [7.2, 2.8, -4.2] as [number, number, number],
     // How far above the ear root the middle of the arm passes (about half its thickness).
     armRestHeightCm: 0.25,
     // Size of the invisible ear shape (half-width out from the head, half-height,
     // half-depth). Its top is just under the ear root and its front at the root.
-    occluderRadiiCm: [1.0, 3.0, 2.1] as [number, number, number],
+    // Wide enough that the arm's tip stays hidden even when seen from below.
+    occluderRadiiCm: [1.3, 3.0, 2.1] as [number, number, number],
   },
 
   glasses: {
@@ -91,7 +93,7 @@ export const CONFIG = {
     // Temple arm length from hinge to tip, in cm. Every model's arms are stretched or
     // shrunk to this so they reach over the ear root and a few cm behind it.
     // Increase if arm tips stop on top of the ear; decrease if they poke out behind it.
-    templeLengthCm: 11.5,
+    templeLengthCm: 12.5,
     // Limits on that stretch, so an unusual model can't be distorted too much.
     templeStretchRange: [0.7, 1.5] as [number, number],
     // Arms modelled opened outwards by more than this (degrees) are swung back in
