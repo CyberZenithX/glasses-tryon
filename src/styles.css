@@ -1,0 +1,12 @@
+/* Global styles. Kept in one small file: the UI is a full-screen camera view
+   with a few overlays, so a CSS framework would be overkill. */
+:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: #0b0b0d;
+  color: #f4f4f5;
+}
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; overflow: hidden; }
+.app { position: fixed; inset: 0; display: grid; place-items: center; }
+.hint { opacity: 0.8; }
