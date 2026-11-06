@@ -17,8 +17,11 @@ export interface FaceDetection {
 export interface FaceTracker {
   /** Where the model runs: 'GPU' (WebGL) or 'CPU' (fallback). Shown in the stats panel. */
   delegate: 'GPU' | 'CPU';
-  /** Runs the model on the current video frame. Returns null when no face is found. */
-  detect(video: HTMLVideoElement, timestampMs: number): FaceDetection | null;
+  /**
+   * Runs the model on the current video frame (or on a frozen copy of one, for
+   * Capture & Compare). Returns null when no face is found.
+   */
+  detect(image: HTMLVideoElement | HTMLCanvasElement, timestampMs: number): FaceDetection | null;
   close(): void;
 }
 
@@ -29,8 +32,8 @@ export async function createFaceTracker(forceCpu = false): Promise<FaceTracker> 
 
   return {
     delegate,
-    detect(video, timestampMs) {
-      const result = landmarker.detectForVideo(video, timestampMs);
+    detect(image, timestampMs) {
+      const result = landmarker.detectForVideo(image, timestampMs);
       const landmarks = result.faceLandmarks[0];
       const matrix = result.facialTransformationMatrixes[0];
       if (!landmarks || !matrix) return null;

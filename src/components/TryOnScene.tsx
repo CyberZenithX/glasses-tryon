@@ -4,9 +4,12 @@
 //   -> move the head group -> adapt lighting to the room -> render -> timings.
 // Everything that happens per frame lives in the single useFrame callback below,
 // so the whole pipeline can be read top to bottom in one place.
+// Capture & Compare adds two things: a capture (freeze the tracked frame and its
+// pose) and a "still" mode that renders the frozen photo once per chosen frame.
 import { useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { copyMirroredCrop, copyVideoFrame, faceCrop, type CapturedPhoto } from '../lib/capture.ts';
 import { getCanonicalFace } from '../lib/canonicalFace.ts';
 import type { GlassesModel } from '../lib/catalog.ts';
 import { CONFIG } from '../lib/config.ts';
@@ -31,6 +34,13 @@ interface TryOnSceneProps {
   showDebug: boolean;
   debugCanvas: HTMLCanvasElement | null;
   onFaceVisibleChange: (visible: boolean) => void;
+  /** Bumped by the Capture button: the next tracked frame with a face is captured (0 = none yet). */
+  captureRequest: number;
+  onCapture: (photo: CapturedPhoto) => void;
+  /** Comparison mode: show this photo with no live tracking, instead of the camera. */
+  stillPhoto: CapturedPhoto | null;
+  /** Set while a comparison photo of `model` is wanted; called once with the rendered image. */
+  onStillRendered: ((modelId: string, image: HTMLCanvasElement) => void) | null;
 }
 
 // A positive priority tells R3F that this callback renders the frame itself,
@@ -47,6 +57,7 @@ const SHADOW_NORMAL_BIAS = 0.02;
 
 export default function TryOnScene(props: TryOnSceneProps) {
   const { video, tracker, model, monitor, smoothingEnabled, showDebug, debugCanvas, onFaceVisibleChange } = props;
+  const { captureRequest, onCapture, stillPhoto, onStillRendered } = props;
   // The head group is moved by setting its matrix directly from the pose each frame.
   const headGroupRef = useRef<THREE.Group>(null);
   const glassesGroupRef = useRef<THREE.Group>(null);
@@ -69,11 +80,30 @@ export default function TryOnScene(props: TryOnSceneProps) {
     roomLight: { intensity: 1, colour: new THREE.Color(1, 1, 1) } as RoomLight,
     appliedLight: { intensity: 1, colour: new THREE.Color(1, 1, 1) } as RoomLight,
     keyLightOffset: new THREE.Vector3(...CONFIG.lighting.keyLightOffsetCm),
+    handledCaptureRequest: 0, // last captureRequest already answered
+    wasStill: false, // true while comparison mode is showing a captured photo
   });
 
   // The background's copy of the camera frame (refreshed in the loop below).
   const videoFrame = useMemo(() => new VideoFrameTexture(video), [video]);
   useEffect(() => () => videoFrame.dispose(), [videoFrame]);
+
+  // Comparison mode: the captured photo as a texture, replacing the live video.
+  // Same settings as the video texture, so the photo looks exactly like the live view.
+  const photoTexture = useMemo(() => {
+    if (!stillPhoto) return null;
+    const texture = new THREE.CanvasTexture(stillPhoto.canvas);
+    texture.colorSpace = THREE.NoColorSpace;
+    texture.minFilter = THREE.LinearFilter;
+    texture.generateMipmaps = false;
+    return texture;
+  }, [stillPhoto]);
+  useEffect(() => () => photoTexture?.dispose(), [photoTexture]);
+  // Which model was last rendered onto this photo: each is rendered only once.
+  const stillRenderedModelRef = useRef<string | null>(null);
+  useEffect(() => {
+    stillRenderedModelRef.current = null;
+  }, [stillPhoto]);
 
   // The key light aims at an object we move to the head each frame.
   useEffect(() => {
@@ -97,6 +127,38 @@ export default function TryOnScene(props: TryOnSceneProps) {
     const frameState = frameStateRef.current;
     if (!headGroup) return;
 
+    // 0. Comparison mode: no tracking and no rendering, except one render per
+    //    chosen frame, onto the captured photo at the captured pose.
+    if (stillPhoto) {
+      frameState.wasStill = true;
+      const glassesGroup = glassesGroupRef.current;
+      const wanted = onStillRendered && model && stillRenderedModelRef.current !== model.id;
+      // Wait until the model has loaded and is mounted (Glasses names its group after the model).
+      if (!wanted || !glassesGroup?.getObjectByName(model.id)) return;
+      headGroup.matrix.copy(stillPhoto.headMatrix);
+      headGroup.visible = true;
+      setFade(glassesGroup, 1);
+      applyRoomLight(scene, keyLightRef.current, keyLightTargetRef.current, headGroup, stillPhoto.light, frameState.keyLightOffset);
+      const image = renderStillPhoto(gl, scene, camera, stillPhoto);
+      stillRenderedModelRef.current = model.id;
+      onStillRendered(model.id, image);
+      return;
+    }
+    if (frameState.wasStill) {
+      // Back from comparison: start fresh, so the glasses fade in on the live face
+      // instead of jumping from the photo's pose.
+      frameState.wasStill = false;
+      frameState.poseFilter.reset();
+      frameState.lastVideoTime = -1;
+      frameState.fade = 0;
+      if (glassesGroupRef.current) setFade(glassesGroupRef.current, 0);
+      headGroup.visible = false;
+      if (frameState.faceVisible) {
+        frameState.faceVisible = false;
+        onFaceVisibleChange(false);
+      }
+    }
+
     // 1. Only run the model when the camera has delivered a new frame.
     //    The screen may refresh at 60-120 Hz while the camera gives ~30 fps.
     const hasNewFrame =
@@ -111,11 +173,15 @@ export default function TryOnScene(props: TryOnSceneProps) {
       // takes 20-40 ms); without this, the background could show that newer frame
       // under glasses placed for the older one, so they jump around whenever the
       // face moves quickly in the picture (e.g. a hand-held phone).
+      // Capture requested: freeze this frame into a canvas and track that frozen
+      // copy (instead of the live video), so the photo and its pose are guaranteed
+      // to come from exactly the same pixels.
+      const captureCanvas = captureRequest !== frameState.handledCaptureRequest ? copyVideoFrame(video) : null;
       videoFrame.upload(gl);
 
       // 2. Face tracking -> RAW pose. Timed on its own: this is the "AI" cost.
       const inferenceStart = performance.now();
-      const detection = tracker.detect(video, inferenceStart);
+      const detection = tracker.detect(captureCanvas ?? video, inferenceStart);
       inferenceMs = performance.now() - inferenceStart;
       if (detection) {
         poseFromMediaPipeMatrix(detection.poseMatrix, frameState.matrix, frameState.rawPose);
@@ -124,6 +190,18 @@ export default function TryOnScene(props: TryOnSceneProps) {
         // 4. Move everything attached to the head (glasses, occluder, debug mesh).
         const shownPose = smoothingEnabled ? frameState.smoothedPose : frameState.rawPose;
         matrixFromPose(shownPose, headGroup.matrix);
+        if (captureCanvas) {
+          // The RAW pose belongs to this exact frame; the smoothed one may trail
+          // a moving head by a frame or two. (No face? The request stays open.)
+          frameState.handledCaptureRequest = captureRequest;
+          const roomLight = frameState.appliedLight;
+          onCapture({
+            canvas: captureCanvas,
+            headMatrix: matrixFromPose(frameState.rawPose, new THREE.Matrix4()),
+            light: { intensity: roomLight.intensity, colour: roomLight.colour.clone() },
+            crop: faceCrop(detection.landmarks, captureCanvas.width, captureCanvas.height),
+          });
+        }
       } else {
         // Face lost: forget the filter history, so when the face comes back the
         // glasses snap to it instead of sliding over from where it was last seen.
@@ -154,18 +232,7 @@ export default function TryOnScene(props: TryOnSceneProps) {
     const applied = frameState.appliedLight;
     applied.intensity += (frameState.roomLight.intensity - applied.intensity) * ease;
     applied.colour.lerp(frameState.roomLight.colour, ease);
-    scene.environmentIntensity = CONFIG.lighting.environmentIntensity * applied.intensity;
-    const keyLight = keyLightRef.current;
-    const keyLightTarget = keyLightTargetRef.current;
-    if (keyLight && keyLightTarget) {
-      keyLight.intensity = CONFIG.lighting.keyLightIntensity * applied.intensity;
-      keyLight.color.copy(applied.colour);
-      // Keep the light (and its shadow camera) centred on the head wherever it moves.
-      headGroup.matrix.decompose(keyLightTarget.position, keyLightTarget.quaternion, keyLightTarget.scale);
-      keyLightTarget.quaternion.identity();
-      keyLightTarget.scale.set(1, 1, 1);
-      keyLight.position.copy(keyLightTarget.position).add(frameState.keyLightOffset);
-    }
+    applyRoomLight(scene, keyLightRef.current, keyLightTargetRef.current, headGroup, applied, frameState.keyLightOffset);
 
     // 6. Fade the glasses in/out instead of popping. When the face is lost the
     //    head group keeps its last pose while it fades.
@@ -223,7 +290,7 @@ export default function TryOnScene(props: TryOnSceneProps) {
         shadow-camera-far={SHADOW_FAR_CM}
       />
       <object3D ref={keyLightTargetRef} />
-      <VideoBackground texture={videoFrame.texture} />
+      <VideoBackground texture={photoTexture ?? videoFrame.texture} />
       {/* matrixAutoUpdate=false: we write the group's matrix ourselves from the pose. */}
       <group ref={headGroupRef} matrixAutoUpdate={false} visible={false}>
         <HeadOccluder visibleForDebug={showDebug} />
@@ -238,6 +305,76 @@ export default function TryOnScene(props: TryOnSceneProps) {
       </group>
     </>
   );
+}
+
+/** Sets the scene's lights for a room light level, with the key light following the head. */
+function applyRoomLight(
+  scene: THREE.Scene,
+  keyLight: THREE.DirectionalLight | null,
+  keyLightTarget: THREE.Object3D | null,
+  headGroup: THREE.Group,
+  light: RoomLight,
+  keyLightOffset: THREE.Vector3,
+): void {
+  scene.environmentIntensity = CONFIG.lighting.environmentIntensity * light.intensity;
+  if (!keyLight || !keyLightTarget) return;
+  keyLight.intensity = CONFIG.lighting.keyLightIntensity * light.intensity;
+  keyLight.color.copy(light.colour);
+  // Keep the light (and its shadow camera) centred on the head wherever it moves.
+  headGroup.matrix.decompose(keyLightTarget.position, keyLightTarget.quaternion, keyLightTarget.scale);
+  keyLightTarget.quaternion.identity();
+  keyLightTarget.scale.set(1, 1, 1);
+  keyLight.position.copy(keyLightTarget.position).add(keyLightOffset);
+}
+
+const savedCanvasSize = new THREE.Vector2();
+
+/**
+ * Renders the scene (photo background + glasses at the captured pose) at the
+ * photo's own size and returns the face crop, mirrored like the live view. Uses
+ * the one existing renderer: its size is switched for this render and restored
+ * straight after. The comparison view covers the canvas, so this never shows.
+ */
+function renderStillPhoto(
+  gl: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+  camera: THREE.Camera,
+  photo: CapturedPhoto,
+): HTMLCanvasElement {
+  const { width: photoWidth, height: photoHeight } = photo.canvas;
+  const { photoHeightPx, maxRenderScale, maxRenderSizePx } = CONFIG.compare;
+  // Render bigger than the camera frame when the face crop would be small, so the
+  // glasses' edges stay crisp in the final photo (within the GPU size limit).
+  const cropHeightPx = photo.crop.height * photoHeight;
+  const scale = Math.min(
+    THREE.MathUtils.clamp(photoHeightPx / cropHeightPx, 1, maxRenderScale),
+    maxRenderSizePx / Math.max(photoWidth, photoHeight),
+  );
+
+  const pixelRatio = gl.getPixelRatio();
+  gl.getSize(savedCanvasSize);
+  gl.setPixelRatio(1);
+  gl.setSize(Math.round(photoWidth * scale), Math.round(photoHeight * scale), false);
+  // The 3D camera must have the photo's aspect ratio (MediaPipe's camera model).
+  const perspective = camera instanceof THREE.PerspectiveCamera ? camera : null;
+  const savedAspect = perspective?.aspect ?? 1;
+  if (perspective) {
+    perspective.aspect = photoWidth / photoHeight;
+    perspective.updateProjectionMatrix();
+  }
+
+  gl.render(scene, camera);
+  // Copy now, in the same task as the render: once the browser has shown the
+  // canvas its pixels are no longer readable.
+  const image = copyMirroredCrop(gl.domElement, photo.crop, photoHeightPx);
+
+  if (perspective) {
+    perspective.aspect = savedAspect;
+    perspective.updateProjectionMatrix();
+  }
+  gl.setPixelRatio(pixelRatio);
+  gl.setSize(savedCanvasSize.x, savedCanvasSize.y, false);
+  return image;
 }
 
 // Debug view: the head axes and MediaPipe's canonical face as a wireframe. If the

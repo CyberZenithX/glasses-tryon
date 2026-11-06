@@ -208,3 +208,245 @@ html, body, #root { margin: 0; height: 100%; overflow: hidden; background: #0b0b
 .picker-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .picker-item:hover { background: rgba(255, 255, 255, 0.08); }
 .picker-item-on { background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.35); }
+
+/* ---------- Capture & Compare ---------- */
+:root {
+  --compare-bg: #0c1020;
+  --card-bg: #141a2d;
+  --card-border: rgba(255, 255, 255, 0.08);
+  --indigo: #6d5df6;
+  --indigo-hover: #7f71fa;
+  --indigo-soft: rgba(109, 93, 246, 0.18);
+  --text-muted: #9aa1b9;
+}
+.icon { flex: none; }
+
+.capture-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--indigo);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  box-shadow: 0 8px 24px rgba(109, 93, 246, 0.4);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.15s, opacity 0.15s;
+}
+.capture-button:hover:not(:disabled) { background: var(--indigo-hover); }
+.capture-button:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
+
+/* Opaque full-screen layer. The live canvas stays mounted underneath (the
+   comparison photos are rendered with it), so it must keep its size. */
+.compare {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: max(20px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+    max(20px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+  background: var(--compare-bg);
+  overflow-y: auto;
+}
+.compare-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.compare-header h1 { margin: 0; font-size: 1.5rem; font-weight: 650; letter-spacing: -0.01em; }
+.compare-subtitle { margin: 4px 0 0; color: var(--text-muted); font-size: 0.92rem; }
+.compare-header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.ghost-button,
+.primary-button,
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+.ghost-button {
+  padding: 9px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: transparent;
+  color: #f4f5fb;
+  font-weight: 550;
+  font-size: 0.9rem;
+}
+.ghost-button:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.28); }
+.primary-button {
+  padding: 14px 26px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--indigo);
+  color: #fff;
+  font-weight: 650;
+  font-size: 1rem;
+  box-shadow: 0 10px 28px rgba(109, 93, 246, 0.35);
+}
+.primary-button:hover:not(:disabled) { background: var(--indigo-hover); }
+.primary-button:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
+.icon-button {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+}
+.icon-button:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+
+/* Photos are the focus: as large as the screen height allows, 4:5 like the crop. */
+.compare-grid {
+  --photo-max-height: calc(100dvh - 330px);
+  flex: 1 0 auto;
+  display: grid;
+  grid-template-columns: repeat(var(--columns), minmax(0, calc(max(var(--photo-max-height), 260px) * 0.8)));
+  justify-content: center;
+  align-content: center;
+  gap: 18px;
+}
+.compare-card {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.compare-card-active { border-color: var(--indigo); box-shadow: 0 0 0 3px var(--indigo-soft); }
+.compare-photo {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  padding: 0;
+  border: 0;
+  background: #0a0d18;
+  cursor: pointer;
+}
+.compare-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.compare-rendering {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(12, 16, 32, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #f4f5fb;
+  font-size: 0.85rem;
+}
+.compare-card figcaption { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 14px; }
+.compare-index {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--indigo);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.compare-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compare-empty {
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  aspect-ratio: 4 / 5;
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.18);
+  background: transparent;
+  color: #f4f5fb;
+  font-size: 0.92rem;
+}
+.compare-empty .icon { width: 28px; height: 28px; color: var(--indigo); }
+
+.compare-footer { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.compare-chooser { min-width: 0; flex: 1 1 420px; }
+.compare-hint { margin: 0 0 8px; color: var(--text-muted); font-size: 0.85rem; }
+.compare-chooser ul {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-radius: 18px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+}
+.compare-chooser ul::-webkit-scrollbar { display: none; }
+.chooser-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 84px;
+  padding: 6px 6px 5px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #f4f5fb;
+  font: inherit;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.chooser-item .picker-thumb { position: relative; }
+.chooser-item:hover { background: rgba(255, 255, 255, 0.06); }
+.chooser-item-on { border-color: var(--indigo); background: var(--indigo-soft); }
+.chooser-check {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--indigo);
+  color: #fff;
+}
+.chooser-check .icon { width: 12px; height: 12px; }
+
+/* Phones: photos scroll sideways, two visible at a time, so each stays large. */
+@media (max-width: 640px) {
+  .compare { gap: 16px; padding-left: 16px; padding-right: 16px; }
+  .compare-header h1 { font-size: 1.25rem; }
+  .compare-header-actions { width: 100%; }
+  .compare-header-actions .ghost-button { flex: 1; }
+  .compare-grid {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    /* 42%: two photos side by side, with the edge of a third peeking in to show it scrolls. */
+    grid-auto-columns: min(42%, calc((100dvh - 380px) * 0.8));
+    justify-content: start;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 4px;
+  }
+  .compare-card { scroll-snap-align: start; }
+  .compare-card figcaption { gap: 6px; padding: 8px 4px 8px 8px; }
+  .compare-index { width: 20px; height: 20px; font-size: 0.7rem; }
+  .compare-name { font-size: 0.85rem; }
+  .compare-card .icon-button { width: 28px; height: 28px; }
+  /* nowrap: in a wrapping column the line is as wide as its widest content, so the frame list would overflow. */
+  .compare-footer { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+  .compare-chooser { flex-basis: auto; }
+  .primary-button { width: 100%; }
+}
