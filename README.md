@@ -42,7 +42,14 @@ _TBD: real measured numbers only. See [docs/PERFORMANCE.md](docs/PERFORMANCE.md)
 
 ## Privacy
 
-_TBD._
+- **Frames are processed locally.** Face tracking and 3D rendering run in your
+  browser. Camera frames never leave your device.
+- **Nothing is stored or sent.** There is no backend, no upload and no recording.
+  Capture & Compare photos stay in memory until you save them yourself.
+- **No cookies, analytics or tracking.**
+- **Model files are served from the app's own host** (`/public`), not from a
+  third-party CDN: the MediaPipe WASM and face model, the 3D glasses, the Draco
+  decoder and the HDR environment.
 
 ## Known limitations
 
