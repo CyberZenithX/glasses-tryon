@@ -3,6 +3,7 @@
 // never to colour. So the video still shows through, but any part of the glasses
 // that is *behind* the head (far arm on a head turn, arm tips behind the ears)
 // fails the depth test and is not drawn: that is what makes the glasses look worn.
+// The same face shape also *receives* the frame's shadow (FaceShadowReceiver).
 import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { getCanonicalFace } from '../lib/canonicalFace.ts';
@@ -59,11 +60,20 @@ export default function HeadOccluder({ visibleForDebug }: { visibleForDebug: boo
     [faceGeometry, sphereGeometry],
   );
 
+  // Invisible except where the frame's shadow falls: ShadowMaterial draws only
+  // the shadow, darkening the video of the face underneath it.
+  const shadowMaterial = useMemo(
+    () => new THREE.ShadowMaterial({ opacity: CONFIG.lighting.faceShadowOpacity, depthWrite: false }),
+    [],
+  );
+  useEffect(() => () => shadowMaterial.dispose(), [shadowMaterial]);
+
   const { skullCentre, skullRadii, earCentre, earRadii } = CONFIG.occluder;
   const [earX, earY, earZ] = earCentre;
   return (
     <group>
       <mesh geometry={faceGeometry} material={material} renderOrder={OCCLUDER_RENDER_ORDER} />
+      <mesh geometry={faceGeometry} material={shadowMaterial} receiveShadow />
       <mesh
         geometry={sphereGeometry}
         material={material}

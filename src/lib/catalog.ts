@@ -9,6 +9,9 @@ export interface ModelCredit {
   license: 'CC0-1.0' | 'CC-BY-4.0';
 }
 
+/** How the frame material should look (see materials.ts for the physical values). */
+export type FrameFinish = 'metal' | 'acetate' | 'plastic';
+
 export interface GlassesModel {
   /** Stable id, also used in the share link (?frame=<id>). */
   id: string;
@@ -28,6 +31,13 @@ export interface GlassesModel {
    * the camera (+Z) and its top points up (+Y). Depends on how the artist exported it.
    */
   rotationDeg?: [number, number, number];
+  /** Frame finish. Parts named like metal (hinges, screws, chrome) always get metal. */
+  finish: FrameFinish;
+  /**
+   * Keep the artist's frame materials untouched (still upgrades lenses). For models
+   * whose look depends on their own textures or whose frame and lenses share one material.
+   */
+  keepAuthoredMaterials?: boolean;
   /** Fine position adjustment after auto-centring, in cm (+X person's left, +Y up, +Z forward). */
   offsetCm?: [number, number, number];
   credit: ModelCredit;
@@ -45,6 +55,7 @@ export const CATALOG: GlassesModel[] = [
     name: 'Bold Square',
     file: '/models/eder-glasses.glb',
     frameWidthMm: DEFAULT_FRAME_WIDTH_MM,
+    finish: 'acetate',
     credit: { title: 'Glasses', author: 'Marius.Eder', sourceUrl: 'https://skfb.ly/6Ruqv', license: 'CC-BY-4.0' },
   },
   {
@@ -52,6 +63,8 @@ export const CATALOG: GlassesModel[] = [
     name: 'Crystal Round',
     file: '/models/tilley-glasses.glb',
     frameWidthMm: DEFAULT_FRAME_WIDTH_MM,
+    finish: 'acetate',
+    keepAuthoredMaterials: true, // frame and lenses share one textured material
     credit: { title: 'Glasses', author: 'Peter Tilley', sourceUrl: 'https://skfb.ly/6ZUC6', license: 'CC-BY-4.0' },
   },
   {
@@ -59,6 +72,7 @@ export const CATALOG: GlassesModel[] = [
     name: 'Classic',
     file: '/models/albertvictory-glasses.glb',
     frameWidthMm: DEFAULT_FRAME_WIDTH_MM,
+    finish: 'acetate',
     rotationDeg: [0, FACE_LEFT, 0],
     credit: { title: 'Glasses', author: 'AlbertVictory', sourceUrl: 'https://skfb.ly/oyp9A', license: 'CC-BY-4.0' },
   },
@@ -67,6 +81,7 @@ export const CATALOG: GlassesModel[] = [
     name: 'Round Wire',
     file: '/models/kinokoda-glasses.glb',
     frameWidthMm: DEFAULT_FRAME_WIDTH_MM,
+    finish: 'metal',
     rotationDeg: [0, FACE_RIGHT, 0],
     credit: { title: 'Glasses', author: 'Dokono Kinokoda', sourceUrl: 'https://skfb.ly/6StPQ', license: 'CC-BY-4.0' },
   },
@@ -75,6 +90,8 @@ export const CATALOG: GlassesModel[] = [
     name: 'Half Rim',
     file: '/models/cuv-glasses.glb',
     frameWidthMm: 135,
+    finish: 'metal',
+    keepAuthoredMaterials: true, // one textured material with its own transmission
     credit: { title: 'Glasses', author: 'C.U.V', sourceUrl: 'https://skfb.ly/oHPPq', license: 'CC-BY-4.0' },
   },
   {
@@ -82,6 +99,7 @@ export const CATALOG: GlassesModel[] = [
     name: 'Heart',
     file: '/models/yadomi-heart-glasses.glb',
     frameWidthMm: DEFAULT_FRAME_WIDTH_MM,
+    finish: 'metal',
     credit: {
       title: 'Heart-shaped glasses',
       author: '🎀 ★彡[ꜰᴇʟɪx ʏᴀᴅᴏᴍɪ]彡★ 🎀',

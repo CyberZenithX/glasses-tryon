@@ -77,6 +77,14 @@ export const CONFIG = {
     // front". Its width is the frame width and its centre goes on the eyes. Using
     // only the front means temple arms (which may splay wider or droop) are ignored.
     frontSliceFraction: 0.08,
+    // Lens glass (see materials.ts). Roughness: 0 = perfectly clear; raise for a
+    // frosted look. IOR 1.5 = ordinary glass/CR-39 plastic lenses.
+    lensRoughness: 0.04,
+    lensIor: 1.5,
+    lensThicknessCm: 0.2,
+    clearLensTint: '#f2f6f8', // faint cool tint of uncoated lenses
+    // Glossiness of the clear-coat layer on acetate/plastic frames (0 = mirror-like).
+    clearcoatRoughness: 0.08,
     // How fast the glasses fade in/out when a face appears/disappears (seconds).
     fadeDurationSec: 0.25,
   },
@@ -100,6 +108,43 @@ export const CONFIG = {
     // pass behind these. Raise earCentre's Y if arm tips still show behind the ears.
     earCentre: [7.4, 0.3, -6.8] as [number, number, number],
     earRadii: [0.9, 2.8, 2.2] as [number, number, number],
+  },
+
+  // Lighting of the glasses. "Adaptive" = follows the brightness and colour of the
+  // room as seen by the camera, so glasses look darker in a dim room, brighter in a
+  // bright one, and warm under warm lamps, like real objects in that room.
+  lighting: {
+    environmentMap: '/hdr/studio_small_09_1k.hdr', // CC0, Poly Haven (local file)
+    // How often to measure the video's brightness (per second). Cheap: it reads a
+    // tiny 16x9 copy of the frame.
+    sampleRateHz: 4,
+    sampleWidth: 16,
+    sampleHeight: 9,
+    // Average video brightness (0..1) at which the lights are at their base strength.
+    referenceBrightness: 0.45,
+    // How strongly light follows the room. 0 = ignore the room, 1 = proportional.
+    brightnessSensitivity: 0.8,
+    // Final light multiplier is clamped to this range, so a black or blown-out
+    // frame never makes the glasses vanish or glow.
+    intensityRange: [0.35, 1.6] as [number, number],
+    // How much the room's average colour tints the lights (0 = pure white light).
+    colourTintStrength: 0.35,
+    // Fraction of the way to the new light level moved each second. Higher = reacts
+    // faster to the room; lower = smoother (no flicker when you move).
+    adaptSpeedPerSec: 2.5,
+    // Base strengths before adaptation.
+    environmentIntensity: 1.0,
+    keyLightIntensity: 1.6,
+    // Key light position relative to the head (cm): above and in front, like a
+    // ceiling light or window. It casts the frame's shadow on the face.
+    keyLightOffsetCm: [8, 40, 45] as [number, number, number],
+    shadowMapSize: 1024,
+    shadowRadius: 6, // softness of the frame's shadow on the face
+    // How dark the frame's shadow on the face is (0 = invisible, 1 = black).
+    faceShadowOpacity: 0.2,
+    // Soft dark patch under the nose pads / bridge, where the frame rests.
+    noseContactShadowOpacity: 0.32,
+    noseContactShadowSizeCm: [3.2, 1.6] as [number, number],
   },
 
   stats: {

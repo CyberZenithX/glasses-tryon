@@ -1,7 +1,11 @@
-// Sets up the Three.js canvas and its camera. The camera copies MediaPipe's
-// virtual camera (field of view, near/far planes) and the canvas has the same
-// aspect ratio as the video, so a pose from MediaPipe lands on the right pixels.
+// Sets up the Three.js canvas, its camera and global lighting. The camera copies
+// MediaPipe's virtual camera (field of view, near/far planes) and the canvas has
+// the same aspect ratio as the video, so a pose from MediaPipe lands on the right
+// pixels. Reflections come from a locally bundled HDR studio environment.
+import { Environment } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
+import { Suspense } from 'react';
+import * as THREE from 'three';
 import { CONFIG } from '../lib/config.ts';
 import type { GlassesModel } from '../lib/catalog.ts';
 import type { FaceTracker } from '../lib/faceTracker.ts';
@@ -28,6 +32,13 @@ export default function TryOnCanvas({ video, ...sceneProps }: TryOnCanvasProps) 
     <Canvas
       className="tryon-canvas"
       dpr={DEVICE_PIXEL_RATIO_RANGE}
+      // Soft (PCF) shadow maps, for the frame's shadow on the face.
+      shadows="soft"
+      // Neutral tone mapping keeps frame colours true (ACES, the default, shifts
+      // hues and crushes blacks, which makes black acetate look flat).
+      onCreated={({ gl }) => {
+        gl.toneMapping = THREE.NeutralToneMapping;
+      }}
       // Camera sits at the origin looking down -Z, exactly like MediaPipe's camera.
       // R3F sets the aspect ratio from the canvas size, which matches the video.
       camera={{
@@ -37,6 +48,10 @@ export default function TryOnCanvas({ video, ...sceneProps }: TryOnCanvasProps) 
         position: [0, 0, 0],
       }}
     >
+      <Suspense fallback={null}>
+        {/* Image-based lighting: reflections on frames and lenses. Not shown as a background. */}
+        <Environment files={CONFIG.lighting.environmentMap} />
+      </Suspense>
       <VideoBackground video={video} />
       <TryOnScene video={video} {...sceneProps} />
     </Canvas>
