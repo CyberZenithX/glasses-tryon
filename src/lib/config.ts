@@ -67,6 +67,9 @@ export const CONFIG = {
     templeLengthCm: 14,
     // Limits on that stretch, so an unusual model can't be distorted too much.
     templeStretchRange: [0.7, 1.5] as [number, number],
+    // Arms modelled opened outwards by more than this (degrees) are swung back in
+    // so they run along the head instead of sticking out behind the ears.
+    minArmSplayToFixDeg: 2,
     // How much the arms slope down from the hinge towards the ear (degrees).
     // Increase if arms pass above the ears; decrease if they pass below.
     templeSlopeDownDeg: 7,
@@ -76,6 +79,27 @@ export const CONFIG = {
     frontSliceFraction: 0.08,
     // How fast the glasses fade in/out when a face appears/disappears (seconds).
     fadeDurationSec: 0.25,
+  },
+
+  // The invisible head shape that hides parts of the glasses behind the head and
+  // ears (see HeadOccluder.tsx). All values are in canonical-face centimetres:
+  // +X = person's left, +Y = up, +Z = towards the camera; nose tip is at z ≈ 7.6.
+  occluder: {
+    // The canonical face is slightly wider at the sides than a 140 mm frame's
+    // arms, which would make the arm nearest the camera vanish "into" the cheek on
+    // head turns. Behind faceSideStartZ the face's sides are pulled in to this
+    // fraction of their width (fully by z = 0). Lower = more of the near arm visible.
+    faceSideWidthScale: 0.9,
+    faceSideStartZ: 3,
+    // Ellipsoid for the skull behind the face. Kept narrower than the arms (so the
+    // near arm stays visible) and behind the forehead/eyes (so it never covers the
+    // frame front).
+    skullCentre: [0, 2, -4] as [number, number, number],
+    skullRadii: [6.8, 9, 8] as [number, number, number],
+    // One flattened ellipsoid per ear (mirrored for the other side). The arm tips
+    // pass behind these. Raise earCentre's Y if arm tips still show behind the ears.
+    earCentre: [7.4, 0.3, -6.8] as [number, number, number],
+    earRadii: [0.9, 2.8, 2.2] as [number, number, number],
   },
 
   stats: {
@@ -92,5 +116,7 @@ export const CONFIG = {
     landmarkColor: '#3ee6a8',
     poseAxesLengthCm: 8, // length of the red/green/blue head axes in the debug view
     faceWireframeColor: '#3ee6a8', // canonical face mesh drawn on the face in debug view
+    occluderColor: '#ff4fa3', // the debug view tints the (normally invisible) occluder this colour
+    occluderOpacity: 0.25,
   },
 } as const;

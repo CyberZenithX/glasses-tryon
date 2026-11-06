@@ -16,6 +16,8 @@ export interface GlassesFit {
   position: THREE.Vector3;
   /** Z (face space, cm) where the frame front ends and the temple arms begin. */
   hingeZ: number;
+  /** Real frame width in cm (the front's width after scaling). */
+  frameWidthCm: number;
   /** Current length of the temple arms (hinge to tip) after scaling, in cm. */
   templeLengthCm: number;
 }
@@ -74,11 +76,13 @@ export function computeGlassesFit(model: THREE.Object3D, entry: GlassesModel): G
 
   const hingeZ = position.z + scale * (bounds.max.z - sliceDepth);
   const tipZ = position.z + scale * bounds.min.z;
-  return { rotation, scale, position, hingeZ, templeLengthCm: hingeZ - tipZ };
+  return { rotation, scale, position, hingeZ, frameWidthCm: targetWidthCm, templeLengthCm: hingeZ - tipZ };
 }
 
 /**
  * Reshapes the temple arms (everything behind the hinge) so they rest on the ears:
+ *  0. swing arms that were modelled splayed open (as if lying on a table) back
+ *     in around the hinge, so they run straight back along the head;
  *  1. stretch/shrink them along the head to a standard length, because artists'
  *     arms vary a lot (some end before the ear, some far behind it);
  *  2. angle them slightly downwards, because rigid models have arms perpendicular
@@ -105,17 +109,34 @@ export function bendTemplesToEars(model: THREE.Object3D, fit: GlassesFit): void 
   );
   model.updateMatrixWorld(true);
   const rootInverse = new THREE.Matrix4().copy(model.matrixWorld).invert();
-  const point = new THREE.Vector3();
-
+  const meshes: { mesh: THREE.Mesh; meshToFace: THREE.Matrix4 }[] = [];
   model.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
     const meshToFace = new THREE.Matrix4().multiplyMatrices(rootInverse, object.matrixWorld).premultiply(modelToFace);
+    meshes.push({ mesh: object, meshToFace });
+  });
+
+  const hingeHalfWidth = fit.frameWidthCm / 2; // the front is centred on x = 0
+  const splayRad = measureArmSplay(meshes, fit.hingeZ, hingeHalfWidth);
+  const point = new THREE.Vector3();
+
+  for (const { mesh, meshToFace } of meshes) {
     const faceToMesh = meshToFace.clone().invert();
-    const positions = object.geometry.getAttribute('position') as THREE.BufferAttribute;
+    const positions = mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
     for (let i = 0; i < positions.count; i++) {
       point.fromBufferAttribute(positions, i).applyMatrix4(meshToFace);
+      if (fit.hingeZ - point.z <= 0) continue; // frame front: untouched
+
+      // 0. Un-splay: rotate around this side's hinge (x = ±half width, z = hingeZ).
+      //    Left arm (x > 0) turns inwards one way, right arm the mirror way.
+      const side = Math.sign(point.x) || 1;
+      const dx = point.x - side * hingeHalfWidth;
+      const dz = point.z - fit.hingeZ;
+      const angle = side * splayRad;
+      point.x = side * hingeHalfWidth + dx * Math.cos(angle) + dz * Math.sin(angle);
+      point.z = fit.hingeZ - dx * Math.sin(angle) + dz * Math.cos(angle);
+
       const behindHinge = fit.hingeZ - point.z; // cm behind the hinge (positive = on the arm)
-      if (behindHinge <= 0) continue;
       const newBehind = behindHinge * stretch;
       point.z = fit.hingeZ - newBehind;
       point.y -= newBehind * slope;
@@ -123,7 +144,45 @@ export function bendTemplesToEars(model: THREE.Object3D, fit: GlassesFit): void 
       positions.setXYZ(i, point.x, point.y, point.z);
     }
     positions.needsUpdate = true;
-    object.geometry.computeBoundingBox();
-    object.geometry.computeBoundingSphere();
-  });
+    mesh.geometry.computeBoundingBox();
+    mesh.geometry.computeBoundingSphere();
+  }
+}
+
+/**
+ * How far (radians) the arms open outwards from straight back. Measured from the
+ * outermost point on the back 40% of the arms, relative to the hinge. Returns 0
+ * for arms that are already straight (or point inwards): those are left alone.
+ */
+function measureArmSplay(
+  meshes: { mesh: THREE.Mesh; meshToFace: THREE.Matrix4 }[],
+  hingeZ: number,
+  hingeHalfWidth: number,
+): number {
+  const REAR_PORTION = 0.6; // "back 40%" = more than 60% of the way to the tip
+  const MIN_SPLAY_RAD = THREE.MathUtils.degToRad(CONFIG.glasses.minArmSplayToFixDeg);
+  const point = new THREE.Vector3();
+  let maxBehind = 0;
+  for (const { mesh, meshToFace } of meshes) {
+    const positions = mesh.geometry.getAttribute('position');
+    for (let i = 0; i < positions.count; i++) {
+      point.fromBufferAttribute(positions, i).applyMatrix4(meshToFace);
+      maxBehind = Math.max(maxBehind, hingeZ - point.z);
+    }
+  }
+  let widest = 0;
+  let widestBehind = 1;
+  for (const { mesh, meshToFace } of meshes) {
+    const positions = mesh.geometry.getAttribute('position');
+    for (let i = 0; i < positions.count; i++) {
+      point.fromBufferAttribute(positions, i).applyMatrix4(meshToFace);
+      const behind = hingeZ - point.z;
+      if (behind > maxBehind * REAR_PORTION && Math.abs(point.x) - hingeHalfWidth > widest) {
+        widest = Math.abs(point.x) - hingeHalfWidth;
+        widestBehind = behind;
+      }
+    }
+  }
+  const splay = Math.atan2(widest, widestBehind);
+  return splay > MIN_SPLAY_RAD ? splay : 0;
 }

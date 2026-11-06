@@ -16,6 +16,7 @@ import { VideoFrameClock, type PerformanceMonitor } from '../lib/performance.ts'
 import { PoseFilter } from '../lib/oneEuroFilter.ts';
 import { createPose, matrixFromPose, poseFromMediaPipeMatrix } from '../lib/poseMath.ts';
 import Glasses from './Glasses.tsx';
+import HeadOccluder from './HeadOccluder.tsx';
 
 interface TryOnSceneProps {
   video: HTMLVideoElement;
@@ -136,6 +137,7 @@ export default function TryOnScene(props: TryOnSceneProps) {
   return (
     // matrixAutoUpdate=false: we write the group's matrix ourselves from the pose.
     <group ref={headGroupRef} matrixAutoUpdate={false} visible={false}>
+      <HeadOccluder visibleForDebug={showDebug} />
       <group ref={glassesGroupRef}>
         {model && (
           <Suspense fallback={null}>
