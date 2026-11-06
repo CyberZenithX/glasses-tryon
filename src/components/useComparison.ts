@@ -8,7 +8,8 @@ import { CATALOG } from '../lib/catalog.ts';
 import { drawComparisonSheet, downloadCanvasAsPng } from '../lib/comparisonImage.ts';
 import { CONFIG } from '../lib/config.ts';
 
-const MIN_FRAMES_TO_SAVE = 2;
+// One frame = a snapshot of you wearing it; two or more = a comparison.
+const MIN_FRAMES_TO_SAVE = 1;
 
 export function useComparison() {
   // Bumped on each Capture click; the scene captures the next frame with a face.

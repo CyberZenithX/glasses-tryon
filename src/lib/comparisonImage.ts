@@ -90,14 +90,11 @@ export async function drawComparisonSheet(photos: SheetPhoto[], date: Date): Pro
   context.textBaseline = 'alphabetic';
   context.fillStyle = COLOURS.title;
   context.font = `650 52px ${FONT}`;
-  context.fillText('My frame comparison', PADDING, PADDING + 56);
+  context.fillText(photos.length === 1 ? 'My try-on' : 'My frame comparison', PADDING, PADDING + 56);
   context.fillStyle = COLOURS.muted;
   context.font = `400 24px ${FONT}`;
-  context.fillText(
-    `Same photo, same pose · ${date.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}`,
-    PADDING,
-    PADDING + 100,
-  );
+  const day = date.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+  context.fillText(photos.length === 1 ? day : `Same photo, same pose · ${day}`, PADDING, PADDING + 100);
   context.textAlign = 'right';
   context.font = `600 24px ${FONT}`;
   context.fillText('Glasses Try-On', layout.width - PADDING, PADDING + 56);

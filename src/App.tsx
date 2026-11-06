@@ -8,6 +8,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import ComparisonView from './components/ComparisonView.tsx';
 import GlassesPicker from './components/GlassesPicker.tsx';
 import PrivacyNote from './components/PrivacyNote.tsx';
+import StylePanel from './components/StylePanel.tsx';
 import { CameraIcon } from './components/Icons.tsx';
 import StatsOverlay from './components/StatsOverlay.tsx';
 import StatusScreen, { type AppStatus } from './components/StatusScreen.tsx';
@@ -16,6 +17,7 @@ import { useComparison } from './components/useComparison.ts';
 import { CATALOG } from './lib/catalog.ts';
 import { CONFIG } from './lib/config.ts';
 import { createFaceTracker, type FaceTracker } from './lib/faceTracker.ts';
+import { DEFAULT_STYLE, type GlassesStyle } from './lib/glassesStyle.ts';
 import { PerformanceMonitor } from './lib/performance.ts';
 import { TestRecorder } from './lib/stabilityTest.ts';
 import { initialFrameId, IS_EMBED, writeFrameToUrl } from './lib/urlOptions.ts';
@@ -43,6 +45,10 @@ export default function App() {
   const [showDebug, setShowDebug] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [smoothingEnabled, setSmoothingEnabled] = useState(true);
+  const [showStyle, setShowStyle] = useState(false);
+  // Lens tint, frame colour and personal fit. Kept when switching frames: the fit
+  // is about the user's face, and a tint is usually wanted across frames.
+  const [glassesStyle, setGlassesStyle] = useState<GlassesStyle>(DEFAULT_STYLE);
   const [selectedId, setSelectedId] = useState(() => initialFrameId(CATALOG));
   const selectFrame = (id: string) => {
     setSelectedId(id);
@@ -164,6 +170,7 @@ export default function App() {
             video={session.video}
             tracker={session.tracker}
             model={sceneModel}
+            glassesStyle={glassesStyle}
             monitor={monitor}
             recorder={recorder}
             smoothingEnabled={smoothingEnabled}
@@ -204,6 +211,14 @@ export default function App() {
             <div className="toolbar">
               <button
                 type="button"
+                className={`chip ${showStyle ? 'chip-on' : ''}`}
+                aria-pressed={showStyle}
+                onClick={() => setShowStyle((on) => !on)}
+              >
+                Style
+              </button>
+              <button
+                type="button"
                 className={`chip ${showStats ? 'chip-on' : ''}`}
                 aria-pressed={showStats}
                 onClick={() => setShowStats((on) => !on)}
@@ -219,6 +234,9 @@ export default function App() {
                 Debug
               </button>
             </div>
+          )}
+          {showStyle && !IS_EMBED && (
+            <StylePanel model={selectedModel} style={glassesStyle} onChange={setGlassesStyle} />
           )}
           {showFaceHint && <p className="face-hint">Look at the camera to try on glasses</p>}
           <div className="bottom-bar">

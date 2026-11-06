@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { copyMirroredCrop, copyVideoFrame, faceCrop, type CapturedPhoto } from '../lib/capture.ts';
 import { getCanonicalFace } from '../lib/canonicalFace.ts';
 import type { GlassesModel } from '../lib/catalog.ts';
+import type { GlassesStyle } from '../lib/glassesStyle.ts';
 import { CONFIG } from '../lib/config.ts';
 import { clearDebugCanvas, drawLandmarks } from '../lib/debugDraw.ts';
 import type { FaceTracker } from '../lib/faceTracker.ts';
@@ -31,6 +32,8 @@ interface TryOnSceneProps {
   video: HTMLVideoElement;
   tracker: FaceTracker;
   model: GlassesModel | null;
+  /** Lens tint, frame colour and personal fit from the Style panel. */
+  glassesStyle: GlassesStyle;
   monitor: PerformanceMonitor;
   /** Records frames while a stability test runs (owned by App, like the monitor). */
   recorder: TestRecorder;
@@ -61,7 +64,7 @@ const SHADOW_NORMAL_BIAS = 0.02;
 
 export default function TryOnScene(props: TryOnSceneProps) {
   const { video, tracker, model, monitor, recorder, smoothingEnabled, showDebug, debugCanvas } = props;
-  const { onFaceVisibleChange } = props;
+  const { onFaceVisibleChange, glassesStyle } = props;
   const { captureRequest, onCapture, stillPhoto, onStillRendered } = props;
   // The head group is moved by setting its matrix directly from the pose each frame.
   const headGroupRef = useRef<THREE.Group>(null);
@@ -310,7 +313,7 @@ export default function TryOnScene(props: TryOnSceneProps) {
         <group ref={glassesGroupRef}>
           {model && (
             <Suspense fallback={null}>
-              <Glasses key={model.id} model={model} />
+              <Glasses key={model.id} model={model} style={glassesStyle} />
             </Suspense>
           )}
         </group>

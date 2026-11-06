@@ -1,24 +1,30 @@
 // Loads one glasses model (.glb) and places it on the canonical face: scaled to its
 // real width, lenses centred on the eyes, front resting on the nose bridge, with a
 // slight natural tilt, with realistic materials and a soft contact shadow where the
-// bridge rests. It lives inside the head group, so it follows the head pose.
+// bridge rests. It lives inside the head group, so it follows the head pose. The
+// Style panel's lens tint, frame colour and size/height fit are applied here too.
 import { useGLTF } from '@react-three/drei';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { DecalGeometry } from 'three/examples/jsm/geometries/DecalGeometry.js';
 import { getCanonicalFace, LANDMARK } from '../lib/canonicalFace.ts';
 import type { GlassesModel } from '../lib/catalog.ts';
 import { CONFIG } from '../lib/config.ts';
 import { bendTemplesToEars, computeGlassesFit, tiltPivot as getTiltPivot } from '../lib/glassesFit.ts';
-import { prepareGlassesMaterials } from '../lib/materials.ts';
+import { DEFAULT_STYLE, type GlassesStyle } from '../lib/glassesStyle.ts';
+import { applyGlassesStyle, prepareGlassesMaterials } from '../lib/materials.ts';
+
+const MM_PER_CM = 10;
+const PERCENT = 100;
 
 interface GlassesProps {
   model: GlassesModel;
+  style?: GlassesStyle;
   /** The nose contact shadow only makes sense on a face (off for product shots). */
   showContactShadow?: boolean;
 }
 
-export default function Glasses({ model, showContactShadow = true }: GlassesProps) {
+export default function Glasses({ model, style = DEFAULT_STYLE, showContactShadow = true }: GlassesProps) {
   const gltf = useGLTF(model.file, CONFIG.glasses.dracoDecoderPath);
 
   const { scene, fit, tiltPivot } = useMemo(() => {
@@ -40,15 +46,23 @@ export default function Glasses({ model, showContactShadow = true }: GlassesProp
     return { scene, fit, tiltPivot: getTiltPivot() };
   }, [gltf, model]);
 
+  // Layout effect: the tint/colour must be in place before the next frame is drawn
+  // (Capture & Compare renders a photo on the first frame after a model mounts).
+  const { lensTint, frameColourId } = style;
+  useLayoutEffect(() => applyGlassesStyle(scene, { lensTint, frameColourId }), [scene, lensTint, frameColourId]);
+
   // The tilt pivots around the nose bridge, like real glasses resting on the nose.
+  // The personal fit scales around the same point (so the bridge stays on the nose)
+  // and moves the glasses up or down the nose.
   const tiltRad = THREE.MathUtils.degToRad(CONFIG.glasses.pantoscopicTiltDeg);
   const offsetFromPivot = fit.position.clone().sub(tiltPivot);
+  const pivot: [number, number, number] = [tiltPivot.x, tiltPivot.y + style.heightMm / MM_PER_CM, tiltPivot.z];
 
   // Named after the model: Capture & Compare checks the scene for this name to know
   // the model has finished loading and is in place before it renders a photo.
   return (
     <group name={model.id}>
-      <group position={tiltPivot} rotation-x={tiltRad}>
+      <group position={pivot} rotation-x={tiltRad} scale={style.sizePercent / PERCENT}>
         <group position={offsetFromPivot} rotation={fit.rotation} scale={fit.scale}>
           <primitive object={scene} />
         </group>

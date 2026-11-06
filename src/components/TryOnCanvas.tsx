@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { CONFIG } from '../lib/config.ts';
 import type { CapturedPhoto } from '../lib/capture.ts';
 import type { GlassesModel } from '../lib/catalog.ts';
+import type { GlassesStyle } from '../lib/glassesStyle.ts';
 import type { FaceTracker } from '../lib/faceTracker.ts';
 import type { PerformanceMonitor } from '../lib/performance.ts';
 import type { TestRecorder } from '../lib/stabilityTest.ts';
@@ -21,6 +22,7 @@ interface TryOnCanvasProps {
   video: HTMLVideoElement;
   tracker: FaceTracker;
   model: GlassesModel | null;
+  glassesStyle: GlassesStyle;
   monitor: PerformanceMonitor;
   recorder: TestRecorder;
   smoothingEnabled: boolean;

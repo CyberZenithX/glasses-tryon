@@ -1,11 +1,13 @@
 // Material set-up for loaded glasses models: makes lenses real glass (refraction +
 // reflections), gives frames a believable finish (metal / acetate / plastic), and
 // fades the glasses in and out when a face appears or disappears. Runs once per
-// model load, except setFade, which the per-frame loop calls while fading.
+// model load, except setFade (called while fading) and applyGlassesStyle (called
+// when the user picks a lens tint or frame colour in the Style panel).
 import * as THREE from 'three';
 import type { FrameFinish, GlassesModel } from './catalog.ts';
 import { TEST_SWITCHES } from './testSwitches.ts';
 import { CONFIG } from './config.ts';
+import type { GlassesStyle } from './glassesStyle.ts';
 
 interface FadeInfo {
   baseOpacity: number;
@@ -131,9 +133,13 @@ export function prepareGlassesMaterials(root: THREE.Object3D, model: GlassesMode
     const source = object.material as THREE.Material;
     if (isLens(source, modelHasOneMaterial)) {
       object.material = makeLens(source, modelScale);
+      object.material.userData.part = 'lens';
       object.castShadow = false; // clear glass casts almost no shadow
     } else {
       object.material = model.keepAuthoredMaterials ? source : applyFrameFinish(source, model.finish);
+      // Only frames we finished ourselves can be recoloured; hinges and screws stay metal.
+      const recolourable = !model.keepAuthoredMaterials && !modelHasOneMaterial && !METAL_NAME.test(source.name);
+      if (recolourable) object.material.userData.part = 'frame';
       // Frames cast a soft shadow onto the face. A model whose frame and lenses are
       // one material can't cast only the frame's shadow (its lenses would throw a
       // big dark patch on the cheeks), so it casts none.
@@ -153,4 +159,57 @@ function removeTransmissionForTest(material: THREE.Material): void {
   material.transparent = true;
   material.opacity = Math.min(material.opacity, TEST_LENS_OPACITY);
   material.depthWrite = false;
+}
+
+interface StyleBase {
+  color: THREE.Color;
+  map: THREE.Texture | null;
+  metalness: number;
+  roughness: number;
+  clearcoat: number;
+}
+
+/**
+ * Applies the Style panel's lens tint and frame colour. The first call remembers
+ * each material's original look, so "Clear" / "Original" restore it exactly.
+ * Models whose frame and lenses share one material are left untouched.
+ */
+export function applyGlassesStyle(
+  root: THREE.Object3D,
+  style: Pick<GlassesStyle, 'lensTint' | 'frameColourId'>,
+): void {
+  const tintHex = CONFIG.style.lensTints[style.lensTint];
+  const frameColour = CONFIG.style.frameColours.find((colour) => colour.id === style.frameColourId);
+  forEachMesh(root, (_mesh, material) => {
+    if (!(material instanceof THREE.MeshPhysicalMaterial)) return;
+    const part = material.userData.part as 'lens' | 'frame' | undefined;
+    if (!part) return;
+    const base = (material.userData.styleBase ??= {
+      color: material.color.clone(),
+      map: material.map,
+      metalness: material.metalness,
+      roughness: material.roughness,
+      clearcoat: material.clearcoat,
+    }) as StyleBase;
+
+    if (part === 'lens') {
+      if (tintHex) material.color.set(tintHex);
+      else material.color.copy(base.color);
+      return;
+    }
+
+    const hex = frameColour?.hex ?? null;
+    // A colour replaces the texture (a dark texture would hide any colour).
+    const map = hex ? null : base.map;
+    if (material.map !== map) {
+      material.map = map;
+      material.needsUpdate = true; // adding/removing a texture changes the shader
+    }
+    if (hex) material.color.set(hex);
+    else material.color.copy(base.color);
+    const gold = hex !== null && frameColour?.metal === true;
+    material.metalness = gold ? 1 : base.metalness;
+    material.roughness = gold ? CONFIG.style.goldRoughness : base.roughness;
+    material.clearcoat = gold ? 0 : base.clearcoat;
+  });
 }

@@ -29,9 +29,11 @@ export default function ComparisonView(props: ComparisonViewProps) {
   const columns = Math.min(slots.length + (full ? 0 : 1), maxFrames);
   const hint = full
     ? `Picking another frame replaces frame ${activeSlot + 1}. Tap a photo to choose which.`
-    : slots.length < 2
-      ? 'Choose at least 2 frames to compare.'
-      : 'Tap a frame to add it, or tap it again to remove it.';
+    : slots.length === 0
+      ? 'Choose a frame to see it on your photo.'
+      : slots.length === 1
+        ? 'Add more frames to compare them side by side, or save this photo.'
+        : 'Tap a frame to add it, or tap it again to remove it.';
 
   return (
     <section className="compare" aria-label="Compare frames">
@@ -125,7 +127,7 @@ export default function ComparisonView(props: ComparisonViewProps) {
           </ul>
         </div>
         <button type="button" className="primary-button" disabled={!canSave || saving} onClick={props.onSave}>
-          <DownloadIcon /> {saving ? 'Saving…' : 'Save comparison'}
+          <DownloadIcon /> {saving ? 'Saving…' : slots.length === 1 ? 'Save photo' : 'Save comparison'}
         </button>
       </footer>
     </section>

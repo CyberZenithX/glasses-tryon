@@ -203,6 +203,30 @@ export const CONFIG = {
     panelRefreshHz: 4,
   },
 
+  // The "Style" panel: lens tints, frame colours and a personal fit adjustment.
+  // Colours are sRGB hex. Lens tints multiply the light seen through the lens, so a
+  // darker tint = darker lens (real sunglasses let through roughly 10-20% of light).
+  style: {
+    lensTints: {
+      clear: null, // the model's own lens colour
+      sun: '#5c5f5a', // neutral grey-green, like G-15 sunglasses
+      blue: '#fbf9f1', // the faint yellow of blue-light filtering lenses (subtle, like the real thing)
+    },
+    frameColours: [
+      { id: 'original', label: 'Original', hex: null, metal: false },
+      { id: 'black', label: 'Black', hex: '#141414', metal: false },
+      { id: 'tortoise', label: 'Havana', hex: '#5a3218', metal: false },
+      { id: 'navy', label: 'Navy', hex: '#1d2b4f', metal: false },
+      { id: 'crimson', label: 'Crimson', hex: '#7d1526', metal: false },
+      { id: 'gold', label: 'Gold', hex: '#d4ad5a', metal: true },
+    ],
+    goldRoughness: 0.25, // polish of the "Gold" metal finish (0 = mirror)
+    // Fit sliders. Size scales the glasses around the nose bridge; height moves them
+    // up/down the nose. Small ranges: the arms are fitted to the ears at 100%.
+    sizePercentRange: [92, 108] as [number, number],
+    heightMmRange: [-4, 4] as [number, number],
+  },
+
   // The Hold-still / Head-turn tests in the stats panel (see stabilityTest.ts).
   stabilityTest: {
     durationSec: 10, // how long each test records

@@ -502,3 +502,54 @@ html, body, #root { margin: 0; height: 100%; overflow: hidden; background: #0b0b
   color: rgba(255, 255, 255, 0.85);
 }
 .privacy-note svg { flex: none; opacity: 0.8; }
+
+/* ---------- Style panel (top-right, under the toolbar) ---------- */
+.style-panel {
+  position: absolute;
+  top: calc(max(12px, env(safe-area-inset-top)) + 46px);
+  right: max(12px, env(safe-area-inset-right));
+  width: min(272px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--overlay-border);
+  background: var(--overlay-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  font-size: 0.8rem;
+}
+.style-panel fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.style-panel fieldset:disabled { opacity: 0.4; }
+.style-panel legend { padding: 0; margin-bottom: 6px; opacity: 0.75; }
+.style-panel > .test-button { align-self: flex-start; }
+.style-note { margin: -4px 0 0; font-size: 0.72rem; opacity: 0.7; }
+.segmented { display: flex; padding: 3px; border-radius: 10px; background: rgba(255, 255, 255, 0.08); }
+.segmented button {
+  flex: 1;
+  padding: 6px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #f4f4f5;
+  font: inherit;
+  cursor: pointer;
+}
+.segmented .segmented-on { background: #f4f4f5; color: #0b0b0d; font-weight: 600; }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+}
+.swatch-on { border-color: #fff; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35); }
+/* "Original": a split swatch, meaning "the model's own colours". */
+.swatch-original { background: linear-gradient(135deg, #e9e3d8 0 50%, #2a2a2a 50% 100%); }
+.slider { display: flex; flex-direction: column; gap: 4px; }
+.slider span { display: flex; justify-content: space-between; opacity: 0.85; }
+.slider output { font-variant-numeric: tabular-nums; opacity: 0.8; }
+.slider input { width: 100%; accent-color: #f4f4f5; }
