@@ -1,7 +1,8 @@
 // The per-frame loop and the head-anchored 3D content. Every frame:
 //   new video frame? -> upload it as the background -> detect face on that same
 //   frame (RAW pose) -> One Euro filter (SMOOTHED pose)
-//   -> move the head group -> adapt lighting to the room -> render -> timings.
+//   -> move the head group -> adapt lighting to the room -> render -> timings
+//   (+ the stability test recorder while a test runs).
 // Everything that happens per frame lives in the single useFrame callback below,
 // so the whole pipeline can be read top to bottom in one place.
 // Capture & Compare adds two things: a capture (freeze the tracked frame and its
@@ -17,6 +18,7 @@ import { clearDebugCanvas, drawLandmarks } from '../lib/debugDraw.ts';
 import type { FaceTracker } from '../lib/faceTracker.ts';
 import { RoomLightSampler, type RoomLight } from '../lib/lighting.ts';
 import { setFade } from '../lib/materials.ts';
+import type { TestRecorder } from '../lib/stabilityTest.ts';
 import { VideoFrameClock, type PerformanceMonitor } from '../lib/performance.ts';
 import { VideoFrameTexture } from '../lib/videoFrameTexture.ts';
 import { PoseFilter } from '../lib/oneEuroFilter.ts';
@@ -30,6 +32,8 @@ interface TryOnSceneProps {
   tracker: FaceTracker;
   model: GlassesModel | null;
   monitor: PerformanceMonitor;
+  /** Records frames while a stability test runs (owned by App, like the monitor). */
+  recorder: TestRecorder;
   smoothingEnabled: boolean;
   showDebug: boolean;
   debugCanvas: HTMLCanvasElement | null;
@@ -56,7 +60,8 @@ const SHADOW_BIAS = -0.0005;
 const SHADOW_NORMAL_BIAS = 0.02;
 
 export default function TryOnScene(props: TryOnSceneProps) {
-  const { video, tracker, model, monitor, smoothingEnabled, showDebug, debugCanvas, onFaceVisibleChange } = props;
+  const { video, tracker, model, monitor, recorder, smoothingEnabled, showDebug, debugCanvas } = props;
+  const { onFaceVisibleChange } = props;
   const { captureRequest, onCapture, stillPhoto, onStillRendered } = props;
   // The head group is moved by setting its matrix directly from the pose each frame.
   const headGroupRef = useRef<THREE.Group>(null);
@@ -259,14 +264,22 @@ export default function TryOnScene(props: TryOnSceneProps) {
     // 8. Timings for the stats panel. Latency = frame arrival -> render submitted.
     //    It cannot include the camera's own exposure/USB delay or the display's
     //    scan-out, which the browser does not expose (see docs/PERFORMANCE.md).
+    //    During a Hold-still / Head-turn test, the same frame (raw AND smoothed
+    //    pose, timings) is also written to the test recorder.
     if (hasNewFrame) {
       const clock = frameClockRef.current;
+      const frameArrivedAt = clock?.latestArrivalMs ?? frameNoticedAt;
+      const renderedAt = performance.now();
       monitor.recordFrame({
-        frameArrivedAt: clock?.latestArrivalMs ?? frameNoticedAt,
+        frameArrivedAt,
         arrivalSource: clock?.latestArrivalMs != null ? clock.source : 'loop',
         inferenceMs,
-        renderedAt: performance.now(),
+        renderedAt,
       });
+      if (recorder.running) {
+        const { faceVisible, rawPose, smoothedPose } = frameState;
+        recorder.record(renderedAt, faceVisible, rawPose, smoothedPose, inferenceMs, renderedAt - frameArrivedAt);
+      }
     }
   }, RENDER_PRIORITY);
 

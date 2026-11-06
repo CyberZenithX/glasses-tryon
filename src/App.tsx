@@ -15,6 +15,7 @@ import { CATALOG } from './lib/catalog.ts';
 import { CONFIG } from './lib/config.ts';
 import { createFaceTracker, type FaceTracker } from './lib/faceTracker.ts';
 import { PerformanceMonitor } from './lib/performance.ts';
+import { TestRecorder } from './lib/stabilityTest.ts';
 import { TEST_SWITCHES } from './lib/testSwitches.ts';
 import { startWebcam, stopWebcam, WebcamError } from './lib/webcam.ts';
 
@@ -43,6 +44,8 @@ export default function App() {
   const selectedModel = CATALOG.find((model) => model.id === selectedId) ?? null;
   // One monitor for the app's lifetime: the frame loop writes to it, the panel reads it.
   const [monitor] = useState(() => new PerformanceMonitor());
+  // Same idea for the stability tests: the loop records, the stats panel reads.
+  const [recorder] = useState(() => new TestRecorder());
   const [faceVisible, setFaceVisible] = useState(false);
   // The "look at the camera" hint waits a moment before appearing: at steep
   // angles tracking can drop for a frame or two, and a flashing hint looks broken.
@@ -154,6 +157,7 @@ export default function App() {
             tracker={session.tracker}
             model={sceneModel}
             monitor={monitor}
+            recorder={recorder}
             smoothingEnabled={smoothingEnabled}
             showDebug={showDebug && !comparing}
             debugCanvas={debugCanvas}
@@ -179,6 +183,7 @@ export default function App() {
           {showStats && (
             <StatsOverlay
               monitor={monitor}
+              recorder={recorder}
               delegate={session.tracker.delegate}
               videoWidth={session.video.videoWidth}
               videoHeight={session.video.videoHeight}

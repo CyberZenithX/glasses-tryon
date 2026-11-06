@@ -2,6 +2,7 @@
 // on one dark card with a title, the frame names and the model credits, and saves
 // it as a PNG. Everything is drawn on a local canvas; nothing is uploaded.
 import { CONFIG } from './config.ts';
+import { downloadBlob } from './download.ts';
 
 export interface SheetPhoto {
   url: string; // object URL of the rendered photo (PNG)
@@ -150,16 +151,7 @@ export async function drawComparisonSheet(photos: SheetPhoto[], date: Date): Pro
 export async function downloadCanvasAsPng(canvas: HTMLCanvasElement, fileName: string): Promise<void> {
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!blob) throw new Error('PNG encoding failed');
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  // Some browsers start the download asynchronously; release the memory a little later.
-  const REVOKE_DELAY_MS = 10_000;
-  window.setTimeout(() => URL.revokeObjectURL(url), REVOKE_DELAY_MS);
+  downloadBlob(blob, fileName);
   canvas.width = 0; // free the sheet's pixels now
 }
 

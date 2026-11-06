@@ -1,10 +1,12 @@
 // Small panel with live performance figures: FPS, face-tracking (inference) time
-// and frame latency. It reads the PerformanceMonitor a few times per second, so
-// the per-frame loop never waits on React.
+// and frame latency, plus the Hold-still / Head-turn test buttons. It reads the
+// PerformanceMonitor a few times per second, so the per-frame loop never waits on React.
 import { useEffect, useState } from 'react';
 import { CONFIG } from '../lib/config.ts';
 import { TEST_SWITCHES } from '../lib/testSwitches.ts';
 import type { PerformanceMonitor, StatsSnapshot } from '../lib/performance.ts';
+import type { TestRecorder } from '../lib/stabilityTest.ts';
+import StabilityTestPanel from './StabilityTestPanel.tsx';
 
 // Targets from the brief, used to colour the numbers green/amber.
 const TARGET_MIN_FPS = 24;
@@ -13,6 +15,7 @@ const MS_PER_SECOND = 1000;
 
 interface StatsOverlayProps {
   monitor: PerformanceMonitor;
+  recorder: TestRecorder;
   delegate: 'GPU' | 'CPU';
   videoWidth: number;
   videoHeight: number;
@@ -30,7 +33,7 @@ const ACTIVE_RENDER_SWITCHES = [
 const format = (value: number, digits = 0) => (Number.isFinite(value) ? value.toFixed(digits) : '–');
 
 export default function StatsOverlay(props: StatsOverlayProps) {
-  const { monitor, delegate, videoWidth, videoHeight, smoothingEnabled, onSmoothingChange } = props;
+  const { monitor, recorder, delegate, videoWidth, videoHeight, smoothingEnabled, onSmoothingChange } = props;
   const [stats, setStats] = useState<StatsSnapshot>(() => monitor.snapshot());
 
   useEffect(() => {
@@ -64,6 +67,13 @@ export default function StatsOverlay(props: StatsOverlayProps) {
         {videoWidth}×{videoHeight} · {delegate} · latency from {stats.latencySource}
         {ACTIVE_RENDER_SWITCHES.length > 0 && ` · ${ACTIVE_RENDER_SWITCHES.join(' · ')}`}
       </p>
+      <StabilityTestPanel
+        recorder={recorder}
+        delegate={delegate}
+        videoWidth={videoWidth}
+        videoHeight={videoHeight}
+        smoothingEnabled={smoothingEnabled}
+      />
     </section>
   );
 }

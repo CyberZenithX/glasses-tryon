@@ -203,6 +203,14 @@ export const CONFIG = {
     panelRefreshHz: 4,
   },
 
+  // The Hold-still / Head-turn tests in the stats panel (see stabilityTest.ts).
+  stabilityTest: {
+    durationSec: 10, // how long each test records
+    // Recorder capacity = duration x this. Higher than any camera delivers, so
+    // no frame is ever dropped (a 10 s test at 240 fps fits).
+    maxRecordedFps: 240,
+  },
+
   // Capture & Compare: one captured photo, shown with several frames side by side.
   compare: {
     maxFrames: 3, // how many frames can be compared at once

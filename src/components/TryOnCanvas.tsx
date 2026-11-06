@@ -11,6 +11,7 @@ import type { CapturedPhoto } from '../lib/capture.ts';
 import type { GlassesModel } from '../lib/catalog.ts';
 import type { FaceTracker } from '../lib/faceTracker.ts';
 import type { PerformanceMonitor } from '../lib/performance.ts';
+import type { TestRecorder } from '../lib/stabilityTest.ts';
 import TryOnScene from './TryOnScene.tsx';
 import { TEST_SWITCHES } from '../lib/testSwitches.ts';
 
@@ -21,6 +22,7 @@ interface TryOnCanvasProps {
   tracker: FaceTracker;
   model: GlassesModel | null;
   monitor: PerformanceMonitor;
+  recorder: TestRecorder;
   smoothingEnabled: boolean;
   showDebug: boolean;
   debugCanvas: HTMLCanvasElement | null;
