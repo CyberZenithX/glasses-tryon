@@ -5,10 +5,10 @@
 import { useGLTF } from '@react-three/drei';
 import { useMemo } from 'react';
 import * as THREE from 'three';
-import { eyeCentre, getCanonicalFace, LANDMARK } from '../lib/canonicalFace.ts';
+import { getCanonicalFace, LANDMARK } from '../lib/canonicalFace.ts';
 import type { GlassesModel } from '../lib/catalog.ts';
 import { CONFIG } from '../lib/config.ts';
-import { bendTemplesToEars, computeGlassesFit } from '../lib/glassesFit.ts';
+import { bendTemplesToEars, computeGlassesFit, tiltPivot as getTiltPivot } from '../lib/glassesFit.ts';
 import { prepareGlassesMaterials } from '../lib/materials.ts';
 
 interface GlassesProps {
@@ -33,12 +33,10 @@ export default function Glasses({ model, showContactShadow = true }: GlassesProp
       object.material = materialCopies.get(original);
       object.geometry = object.geometry.clone(); // the arms get reshaped below
     });
-    const face = getCanonicalFace();
-    const bridge = face.vertices[LANDMARK.noseBridge] ?? eyeCentre(face);
     const fit = computeGlassesFit(scene, model);
     bendTemplesToEars(scene, fit);
     prepareGlassesMaterials(scene, model, fit.scale);
-    return { scene, fit, tiltPivot: bridge.clone() };
+    return { scene, fit, tiltPivot: getTiltPivot() };
   }, [gltf, model]);
 
   // The tilt pivots around the nose bridge, like real glasses resting on the nose.

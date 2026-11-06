@@ -66,7 +66,11 @@ export function computeGlassesFit(model: THREE.Object3D, entry: GlassesModel): G
   const face = getCanonicalFace();
   const eyes = eyeCentre(face);
   const bridge = face.vertices[LANDMARK.noseBridge] ?? eyes;
-  const target = new THREE.Vector3(0, eyes.y, bridge.z + CONFIG.glasses.frontGapFromNoseBridgeCm);
+  const target = new THREE.Vector3(
+    0,
+    eyes.y - CONFIG.glasses.lensCentreBelowEyesCm,
+    bridge.z + CONFIG.glasses.frontGapFromNoseBridgeCm,
+  );
 
   // position = target - (scaled model point that should land on target)
   const anchor = new THREE.Vector3(frontCentre.x, frontCentre.y, bounds.max.z).multiplyScalar(scale);
@@ -85,21 +89,18 @@ export function computeGlassesFit(model: THREE.Object3D, entry: GlassesModel): G
  *     in around the hinge, so they run straight back along the head;
  *  1. stretch/shrink them along the head to a standard length, because artists'
  *     arms vary a lot (some end before the ear, some far behind it);
- *  2. angle them slightly downwards, because rigid models have arms perpendicular
- *     to the front, and our pantoscopic tilt would otherwise point them up, above
- *     the ear. Real arms run back and slightly down to the top of the ear.
+ *  2. angle them so they pass just over the ear root (CONFIG.ear). Hinges sit at
+ *     different heights on different frames, so a fixed angle can't work: each
+ *     model gets the angle that runs from its own hinge to the ear.
  * The frame front is untouched. Edits each mesh's own copy of its geometry, once.
  */
 export function bendTemplesToEars(model: THREE.Object3D, fit: GlassesFit): void {
-  const { templeLengthCm, templeSlopeDownDeg, pantoscopicTiltDeg, templeStretchRange } = CONFIG.glasses;
+  const { templeLengthCm, templeStretchRange } = CONFIG.glasses;
   const stretch = THREE.MathUtils.clamp(
     templeLengthCm / fit.templeLengthCm,
     templeStretchRange[0],
     templeStretchRange[1],
   );
-  // The tilt is applied later around the nose bridge and lifts the arms by the same
-  // angle, so the downward slope we bake in includes it.
-  const slope = Math.tan(THREE.MathUtils.degToRad(templeSlopeDownDeg + pantoscopicTiltDeg));
 
   // Model space -> face space (before tilt), as placed by computeGlassesFit.
   const modelToFace = new THREE.Matrix4().compose(
@@ -118,6 +119,7 @@ export function bendTemplesToEars(model: THREE.Object3D, fit: GlassesFit): void 
 
   const hingeHalfWidth = fit.frameWidthCm / 2; // the front is centred on x = 0
   const splayRad = measureArmSplay(meshes, fit.hingeZ, hingeHalfWidth);
+  const slope = armSlopeToEar(meshes, fit.hingeZ, stretch);
   const point = new THREE.Vector3();
 
   for (const { mesh, meshToFace } of meshes) {
@@ -147,6 +149,61 @@ export function bendTemplesToEars(model: THREE.Object3D, fit: GlassesFit): void 
     mesh.geometry.computeBoundingBox();
     mesh.geometry.computeBoundingSphere();
   }
+}
+
+/**
+ * The pantoscopic tilt is applied later (in Glasses.tsx), around the nose bridge.
+ * Arms are reshaped *before* that tilt, so to aim them at the ear we first undo the
+ * tilt on the ear's position: "where will the ear be, in the untilted frame?".
+ */
+export function tiltPivot(): THREE.Vector3 {
+  const face = getCanonicalFace();
+  return (face.vertices[LANDMARK.noseBridge] ?? eyeCentre(face)).clone();
+}
+
+/**
+ * Downward slope (drop in cm per cm travelled back) that brings the arms down onto
+ * the ear root. We measure how high the arms already are where the ear is (after
+ * stretching), and tilt them by exactly the amount that moves that height onto the
+ * ear. Measuring at the ear (not at the hinge) works for any arm shape: straight,
+ * already sloping, or curved, and ignores chunky frame fronts near the hinge.
+ */
+function armSlopeToEar(
+  meshes: { mesh: THREE.Mesh; meshToFace: THREE.Matrix4 }[],
+  hingeZ: number,
+  stretch: number,
+): number {
+  const EAR_ZONE_HALF_DEPTH_CM = 1; // arm vertices within ±1 cm of the ear (front to back)
+  const MAX_SLOPE = Math.tan(THREE.MathUtils.degToRad(30)); // guard against odd models
+
+  // Ear root, moved into the untilted frame (rotate by -tilt about the pivot).
+  const [, earY, earZ] = CONFIG.ear.rootCm;
+  const pivot = tiltPivot();
+  const ear = new THREE.Vector3(0, earY + CONFIG.ear.armRestHeightCm, earZ)
+    .sub(pivot)
+    .applyAxisAngle(new THREE.Vector3(1, 0, 0), -THREE.MathUtils.degToRad(CONFIG.glasses.pantoscopicTiltDeg))
+    .add(pivot);
+  const earBehindHinge = hingeZ - ear.z;
+
+  // Average height of the (stretched) arms around the ear.
+  const point = new THREE.Vector3();
+  let sumY = 0;
+  let count = 0;
+  for (const { mesh, meshToFace } of meshes) {
+    const positions = mesh.geometry.getAttribute('position');
+    for (let i = 0; i < positions.count; i++) {
+      point.fromBufferAttribute(positions, i).applyMatrix4(meshToFace);
+      const behind = (hingeZ - point.z) * stretch;
+      if (behind > 0 && Math.abs(behind - earBehindHinge) <= EAR_ZONE_HALF_DEPTH_CM) {
+        sumY += point.y;
+        count++;
+      }
+    }
+  }
+  if (count === 0) return 0;
+  const armYAtEar = sumY / count;
+  const slope = (armYAtEar - ear.y) / earBehindHinge;
+  return THREE.MathUtils.clamp(slope, -MAX_SLOPE, MAX_SLOPE);
 }
 
 /**

@@ -34,6 +34,9 @@ export default function App() {
   // One monitor for the app's lifetime: the frame loop writes to it, the panel reads it.
   const [monitor] = useState(() => new PerformanceMonitor());
   const [faceVisible, setFaceVisible] = useState(false);
+  // The "look at the camera" hint waits a moment before appearing: at steep
+  // angles tracking can drop for a frame or two, and a flashing hint looks broken.
+  const [showFaceHint, setShowFaceHint] = useState(false);
   // Bumping this re-runs the start-up effect ("Try again" button).
   const [attempt, setAttempt] = useState(0);
 
@@ -106,6 +109,15 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  useEffect(() => {
+    if (faceVisible) return;
+    const timer = window.setTimeout(() => setShowFaceHint(true), CONFIG.ui.faceHintDelayMs);
+    return () => {
+      window.clearTimeout(timer);
+      setShowFaceHint(false); // face is back: hide the hint (and restart the delay next time)
+    };
+  }, [faceVisible]);
+
   const retry = () => {
     setStatus({ kind: 'starting-camera' });
     setAttempt((n) => n + 1);
@@ -172,7 +184,7 @@ export default function App() {
               Debug
             </button>
           </div>
-          {!faceVisible && <p className="face-hint">Look at the camera to try on glasses</p>}
+          {showFaceHint && <p className="face-hint">Look at the camera to try on glasses</p>}
           <div className="bottom-bar">
             {selectedModel && (
               // CC-BY models must credit their authors; doing it where the model is shown.

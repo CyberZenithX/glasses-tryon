@@ -58,27 +58,45 @@ export const CONFIG = {
     devicePixelRatioRange: [1, 2] as [number, number],
   },
 
+  // Where the ears are on the canonical face (cm; +X = person's left, +Y = up,
+  // +Z = towards the camera; eye centre is at y ≈ 2.6, nose tip at z ≈ 7.6).
+  // MediaPipe has no ear landmarks, so this is a fixed average position, checked
+  // against real profile views: the ear starts just behind the back edge of the
+  // face mesh (z ≈ -2.4), with its top at about eye level.
+  ear: {
+    // "Ear root": where the top of the ear joins the head; temple arms rest here.
+    // Arms pass over the ear above this point, then their tips go behind the ear.
+    // Raise Y if arms cut through the ear; lower it if they float above it.
+    // Move Z back (more negative) if arm tips vanish before reaching the ear.
+    rootCm: [7.2, 2.8, -3.2] as [number, number, number],
+    // How far above the ear root the middle of the arm passes (about half its thickness).
+    armRestHeightCm: 0.25,
+    // Size of the invisible ear shape (half-width out from the head, half-height,
+    // half-depth). Its top is just under the ear root and its front at the root.
+    occluderRadiiCm: [1.0, 3.0, 2.1] as [number, number, number],
+  },
+
   glasses: {
     // Draco decoder for compressed .glb files, served locally (drei would use a CDN).
     dracoDecoderPath: '/draco/',
     // How far in front of the nose-bridge skin the front of the frame sits, in cm.
     // Bigger = glasses float further from the face.
     frontGapFromNoseBridgeCm: 0.6,
+    // Real glasses rest on the nose with the lens centres a little below the
+    // pupils. Bigger = glasses sit lower on the face.
+    lensCentreBelowEyesCm: 0.6,
     // Real glasses tilt slightly, with the lower rims closer to the cheeks
     // ("pantoscopic tilt"), and this tilt is added to every model. Positive = lower rims move in.
     pantoscopicTiltDeg: 6,
     // Temple arm length from hinge to tip, in cm. Every model's arms are stretched or
-    // shrunk to this so they reach just behind the ear. Real arms are ~13.5-15 cm.
-    // Increase if arm tips stop in front of the ear; decrease if they reach too far back.
-    templeLengthCm: 14,
+    // shrunk to this so they reach over the ear root and a few cm behind it.
+    // Increase if arm tips stop on top of the ear; decrease if they poke out behind it.
+    templeLengthCm: 11.5,
     // Limits on that stretch, so an unusual model can't be distorted too much.
     templeStretchRange: [0.7, 1.5] as [number, number],
     // Arms modelled opened outwards by more than this (degrees) are swung back in
     // so they run along the head instead of sticking out behind the ears.
     minArmSplayToFixDeg: 2,
-    // How much the arms slope down from the hinge towards the ear (degrees).
-    // Increase if arms pass above the ears; decrease if they pass below.
-    templeSlopeDownDeg: 7,
     // Fraction of a model's depth (front to temple tips) that counts as "the frame
     // front". Its width is the frame width and its centre goes on the eyes. Using
     // only the front means temple arms (which may splay wider or droop) are ignored.
@@ -113,10 +131,7 @@ export const CONFIG = {
     // frame front).
     skullCentre: [0, 2, -4] as [number, number, number],
     skullRadii: [6.8, 9, 8] as [number, number, number],
-    // One flattened ellipsoid per ear (mirrored for the other side). The arm tips
-    // pass behind these. Raise earCentre's Y if arm tips still show behind the ears.
-    earCentre: [7.4, 0.3, -6.8] as [number, number, number],
-    earRadii: [0.9, 2.8, 2.2] as [number, number, number],
+    // Ears: see CONFIG.ear (shared with the arm fitting, so both always agree).
   },
 
   // Lighting of the glasses. "Adaptive" = follows the brightness and colour of the
@@ -163,6 +178,11 @@ export const CONFIG = {
     // How often the on-screen stats panel refreshes (per second). Refreshing
     // less often keeps the panel readable and costs almost nothing.
     panelRefreshHz: 4,
+  },
+
+  ui: {
+    // How long the face must be lost before "Look at the camera" appears (ms).
+    faceHintDelayMs: 800,
   },
 
   debug: {
