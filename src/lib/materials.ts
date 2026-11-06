@@ -101,7 +101,10 @@ function makeLens(source: THREE.Material, modelScale: number): THREE.MeshPhysica
   lens.opacity = 1;
   lens.transparent = false; // transmission handles see-through itself
   lens.depthWrite = true;
-  lens.side = THREE.DoubleSide;
+  // One side only: artists often model lenses as closed solids, and drawing both
+  // the front and back surfaces doubles the reflection (looks milky in dim rooms).
+  lens.side = THREE.FrontSide;
+  lens.envMapIntensity = CONFIG.glasses.lensReflectionStrength;
   return lens;
 }
 

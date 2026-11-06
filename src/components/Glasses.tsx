@@ -11,7 +11,13 @@ import { CONFIG } from '../lib/config.ts';
 import { bendTemplesToEars, computeGlassesFit } from '../lib/glassesFit.ts';
 import { prepareGlassesMaterials } from '../lib/materials.ts';
 
-export default function Glasses({ model }: { model: GlassesModel }) {
+interface GlassesProps {
+  model: GlassesModel;
+  /** The nose contact shadow only makes sense on a face (off for product shots). */
+  showContactShadow?: boolean;
+}
+
+export default function Glasses({ model, showContactShadow = true }: GlassesProps) {
   const gltf = useGLTF(model.file, CONFIG.glasses.dracoDecoderPath);
 
   const { scene, fit, tiltPivot } = useMemo(() => {
@@ -46,7 +52,7 @@ export default function Glasses({ model }: { model: GlassesModel }) {
           <primitive object={scene} />
         </group>
       </group>
-      <NoseContactShadow />
+      {showContactShadow && <NoseContactShadow />}
     </>
   );
 }

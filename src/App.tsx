@@ -165,7 +165,19 @@ export default function App() {
             </button>
           </div>
           {!faceVisible && <p className="face-hint">Look at the camera to try on glasses</p>}
-          <GlassesPicker models={CATALOG} selectedId={selectedId} onSelect={setSelectedId} />
+          <div className="bottom-bar">
+            {selectedModel && (
+              // CC-BY models must credit their authors; doing it where the model is shown.
+              <p className="credit">
+                {selectedModel.name} ·{' '}
+                <a href={selectedModel.credit.sourceUrl} target="_blank" rel="noreferrer">
+                  “{selectedModel.credit.title}” by {selectedModel.credit.author}
+                </a>{' '}
+                · {selectedModel.credit.license.replace('-4.0', ' 4.0').replace('-', ' ')}
+              </p>
+            )}
+            <GlassesPicker models={CATALOG} selectedId={selectedId} onSelect={setSelectedId} />
+          </div>
         </>
       )}
       <StatusScreen status={status} onRetry={retry} />

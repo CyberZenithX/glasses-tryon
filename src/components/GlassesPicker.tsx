@@ -20,7 +20,9 @@ export default function GlassesPicker({ models, selectedId, onSelect }: GlassesP
               aria-pressed={model.id === selectedId}
               onClick={() => onSelect(model.id)}
             >
-              {model.thumbnail && <img src={model.thumbnail} alt="" draggable={false} />}
+              <span className="picker-thumb">
+                {model.thumbnail && <img src={model.thumbnail} alt="" draggable={false} />}
+              </span>
               <span>{model.name}</span>
             </button>
           </li>

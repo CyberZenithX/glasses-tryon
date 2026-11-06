@@ -19,7 +19,7 @@ export interface GlassesModel {
   name: string;
   /** Path of the .glb file, relative to the site root. */
   file: string;
-  /** Optional small preview image for the picker. */
+  /** Small preview image for the picker (rendered from the model itself). */
   thumbnail?: string;
   /**
    * Real total frame width (hinge to hinge, across the front) in millimetres.
@@ -54,6 +54,7 @@ export const CATALOG: GlassesModel[] = [
     id: 'eder',
     name: 'Bold Square',
     file: '/models/eder-glasses.glb',
+    thumbnail: '/thumbnails/eder.png',
     frameWidthMm: DEFAULT_FRAME_WIDTH_MM,
     finish: 'acetate',
     credit: { title: 'Glasses', author: 'Marius.Eder', sourceUrl: 'https://skfb.ly/6Ruqv', license: 'CC-BY-4.0' },
@@ -62,6 +63,7 @@ export const CATALOG: GlassesModel[] = [
     id: 'tilley',
     name: 'Crystal Round',
     file: '/models/tilley-glasses.glb',
+    thumbnail: '/thumbnails/tilley.png',
     frameWidthMm: DEFAULT_FRAME_WIDTH_MM,
     finish: 'acetate',
     keepAuthoredMaterials: true, // frame and lenses share one textured material
@@ -71,6 +73,7 @@ export const CATALOG: GlassesModel[] = [
     id: 'victory',
     name: 'Classic',
     file: '/models/albertvictory-glasses.glb',
+    thumbnail: '/thumbnails/victory.png',
     frameWidthMm: DEFAULT_FRAME_WIDTH_MM,
     finish: 'acetate',
     rotationDeg: [0, FACE_LEFT, 0],
@@ -80,6 +83,7 @@ export const CATALOG: GlassesModel[] = [
     id: 'kinokoda',
     name: 'Round Wire',
     file: '/models/kinokoda-glasses.glb',
+    thumbnail: '/thumbnails/kinokoda.png',
     frameWidthMm: DEFAULT_FRAME_WIDTH_MM,
     finish: 'metal',
     rotationDeg: [0, FACE_RIGHT, 0],
@@ -89,6 +93,7 @@ export const CATALOG: GlassesModel[] = [
     id: 'cuv',
     name: 'Half Rim',
     file: '/models/cuv-glasses.glb',
+    thumbnail: '/thumbnails/cuv.png',
     frameWidthMm: 135,
     finish: 'metal',
     keepAuthoredMaterials: true, // one textured material with its own transmission
@@ -98,6 +103,7 @@ export const CATALOG: GlassesModel[] = [
     id: 'heart',
     name: 'Heart',
     file: '/models/yadomi-heart-glasses.glb',
+    thumbnail: '/thumbnails/heart.png',
     frameWidthMm: DEFAULT_FRAME_WIDTH_MM,
     finish: 'metal',
     credit: {

@@ -83,6 +83,9 @@ export const CONFIG = {
     lensIor: 1.5,
     lensThicknessCm: 0.2,
     clearLensTint: '#f2f6f8', // faint cool tint of uncoated lenses
+    // Strength of reflections on lenses (1 = physically full). Real lenses have an
+    // anti-reflective coating, so they reflect less than bare glass.
+    lensReflectionStrength: 0.5,
     // Glossiness of the clear-coat layer on acetate/plastic frames (0 = mirror-like).
     clearcoatRoughness: 0.08,
     // How fast the glasses fade in/out when a face appears/disappears (seconds).
@@ -123,10 +126,10 @@ export const CONFIG = {
     // Average video brightness (0..1) at which the lights are at their base strength.
     referenceBrightness: 0.45,
     // How strongly light follows the room. 0 = ignore the room, 1 = proportional.
-    brightnessSensitivity: 0.8,
+    brightnessSensitivity: 1.0,
     // Final light multiplier is clamped to this range, so a black or blown-out
     // frame never makes the glasses vanish or glow.
-    intensityRange: [0.35, 1.6] as [number, number],
+    intensityRange: [0.15, 1.6] as [number, number],
     // How much the room's average colour tints the lights (0 = pure white light).
     colourTintStrength: 0.35,
     // Fraction of the way to the new light level moved each second. Higher = reacts
