@@ -46,6 +46,8 @@ export interface GlassesModel {
 // No model's real frame width was published by its author, so most use 140 mm
 // (a typical adult medium frame). cuv-glasses was modelled at real scale (135 mm).
 const DEFAULT_FRAME_WIDTH_MM = 140;
+// Heart's width was chosen by eye on real faces (its author published no size).
+const HEART_FRAME_WIDTH_MM = 130;
 const FACE_LEFT = -90; // rotate a model whose front faces +X so it faces the camera
 const FACE_RIGHT = 90; // rotate a model whose front faces -X so it faces the camera
 
@@ -104,7 +106,10 @@ export const CATALOG: GlassesModel[] = [
     name: 'Heart',
     file: '/models/yadomi-heart-glasses.glb',
     thumbnail: '/thumbnails/heart.png',
-    frameWidthMm: DEFAULT_FRAME_WIDTH_MM,
+    // Narrower than the default: the hearts bulge out past the hinges and are much
+    // taller than ordinary lenses, so at 140 mm they overhung the face. At 130 mm
+    // the outer edges line up with the other frames'.
+    frameWidthMm: HEART_FRAME_WIDTH_MM,
     finish: 'metal',
     credit: {
       title: 'Heart-shaped glasses',
