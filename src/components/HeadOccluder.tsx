@@ -37,22 +37,26 @@ export default function HeadOccluder({ visibleForDebug }: { visibleForDebug: boo
   const faceGeometry = useMemo(() => createFaceOccluderGeometry(), []);
   const sphereGeometry = useMemo(() => new THREE.SphereGeometry(1, SPHERE_SEGMENTS, SPHERE_SEGMENTS), []);
 
-  // colorWrite=false: invisible, but still fills the depth buffer.
-  // In the debug view it is tinted instead, to check its placement.
-  const material = useMemo(
+  // colorWrite=false: invisible, but still fills the depth buffer. Used in the
+  // debug view too, so the debug view hides exactly what the normal view hides.
+  const depthMaterial = useMemo(() => new THREE.MeshBasicMaterial({ colorWrite: false }), []);
+  // Debug view only: a see-through tint drawn over the same shapes, to check their
+  // placement. It doesn't write depth, so it never changes what is hidden.
+  const tintMaterial = useMemo(
     () =>
       visibleForDebug
         ? new THREE.MeshBasicMaterial({
             color: CONFIG.debug.occluderColor,
             transparent: true,
             opacity: CONFIG.debug.occluderOpacity,
-            depthWrite: true,
+            depthWrite: false,
           })
-        : new THREE.MeshBasicMaterial({ colorWrite: false }),
+        : null,
     [visibleForDebug],
   );
 
-  useEffect(() => () => material.dispose(), [material]);
+  useEffect(() => () => depthMaterial.dispose(), [depthMaterial]);
+  useEffect(() => () => tintMaterial?.dispose(), [tintMaterial]);
   useEffect(
     () => () => {
       faceGeometry.dispose();
@@ -73,28 +77,34 @@ export default function HeadOccluder({ visibleForDebug }: { visibleForDebug: boo
   // Ears: placed from the shared ear root, so arms (aimed at the same root) vanish
   // exactly where they reach the ear. See ear.ts.
   const ear = useMemo(() => earVolume(), []);
+  // Every shape is drawn with the depth material, plus the tint in the debug view.
+  const materials = tintMaterial ? [depthMaterial, tintMaterial] : [depthMaterial];
   return (
     <group>
-      <mesh geometry={faceGeometry} material={material} renderOrder={OCCLUDER_RENDER_ORDER} />
-      <mesh geometry={faceGeometry} material={shadowMaterial} receiveShadow />
-      <mesh
-        geometry={sphereGeometry}
-        material={material}
-        position={skullCentre}
-        scale={skullRadii}
-        renderOrder={OCCLUDER_RENDER_ORDER}
-      />
-      {/* Ears: one each side (person's left at +X, right at -X). */}
-      {[1, -1].map((side) => (
-        <mesh
-          key={side}
-          geometry={sphereGeometry}
-          material={material}
-          position={[side * ear.centre.x, ear.centre.y, ear.centre.z]}
-          scale={ear.radii}
-          renderOrder={OCCLUDER_RENDER_ORDER}
-        />
+      {materials.map((material) => (
+        <group key={material.uuid}>
+          <mesh geometry={faceGeometry} material={material} renderOrder={OCCLUDER_RENDER_ORDER} />
+          <mesh
+            geometry={sphereGeometry}
+            material={material}
+            position={skullCentre}
+            scale={skullRadii}
+            renderOrder={OCCLUDER_RENDER_ORDER}
+          />
+          {/* Ears: one each side (person's left at +X, right at -X). */}
+          {[1, -1].map((side) => (
+            <mesh
+              key={side}
+              geometry={sphereGeometry}
+              material={material}
+              position={[side * ear.centre.x, ear.centre.y, ear.centre.z]}
+              scale={ear.radii}
+              renderOrder={OCCLUDER_RENDER_ORDER}
+            />
+          ))}
+        </group>
       ))}
+      <mesh geometry={faceGeometry} material={shadowMaterial} receiveShadow />
     </group>
   );
 }

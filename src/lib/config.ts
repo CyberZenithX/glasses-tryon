@@ -60,19 +60,20 @@ export const CONFIG = {
 
   // Where the ears are, in MediaPipe's head coordinates (cm; +X = person's left,
   // +Y = up, +Z = towards the camera; eye centre is at y ≈ 2.6, nose tip at z ≈ 7.6).
-  // MediaPipe has no ear landmarks, so this is a fixed position, calibrated by
-  // running real head-turn webcam frames through the app with the debug view on
-  // (yellow dots = this point) and moving it until it sat where the top of the
-  // ear meets the head. It is further out/back than a real skull's ear (~7.5, -4)
-  // because MediaPipe assumes a 63° camera field of view, wider than most webcams
-  // and phone cameras, which squashes everything behind the face towards the face.
+  // MediaPipe has no ear landmarks, so this is a fixed point, calibrated on real
+  // webcam frames (7 debug screenshots, front-ish to side-on): for each frame we
+  // marked where the top of the ear meets the head and chose the point that keeps
+  // the arm from overshooting past the ear in any frame (an arm floating in the air
+  // beside the ear looks far worse than one ending a few mm early). It sits further
+  // back than a real ear (~7.5, -4) because MediaPipe underestimates how far the
+  // head is turned in side views. Remaining error on those frames: about ±0.7 cm.
   ear: {
     // "Ear root": where the top of the ear joins the head; temple arms rest here.
     // Arms are aimed at this point and disappear behind the ear from there on.
     // Raise Y if arms cut through the ear; lower it if they float above it.
     // Move Z back (more negative) if arms vanish before reaching the ear; raise X
     // if, seen from the front, the arms end inside the face instead of at the ears.
-    rootCm: [8.8, 2.8, -5.6] as [number, number, number],
+    rootCm: [7.8, 2.8, -7.8] as [number, number, number],
     // How far above the ear root the middle of the arm passes (about half its thickness).
     armRestHeightCm: 0.25,
     // The invisible ear shape (see ear.ts): one solid ellipsoid holding the ear and
@@ -105,7 +106,7 @@ export const CONFIG = {
     // Every model's arms are stretched or shrunk to this so they reach over the ear
     // root and a few cm behind it.
     // Increase if arm tips stop on top of the ear; decrease if they poke out behind it.
-    templeLengthCm: 13.5,
+    templeLengthCm: 16,
     // Limits on that stretch, so an unusual model can't be distorted too much.
     templeStretchRange: [0.7, 1.5] as [number, number],
     // Arms modelled opened outwards by more than this (degrees) are swung back in
