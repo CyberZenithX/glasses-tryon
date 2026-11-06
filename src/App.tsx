@@ -1,12 +1,16 @@
 // Top-level layout and UI state. Starts the camera, then the face tracker, then
 // shows the mirrored "stage" (webcam + 3D glasses) with overlays on top. The stage
 // keeps the video's aspect ratio and is scaled to cover the screen, like a camera app.
+// "Capture & Compare" freezes one frame and opens the comparison screen on top.
 import { useGLTF } from '@react-three/drei';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import ComparisonView from './components/ComparisonView.tsx';
 import GlassesPicker from './components/GlassesPicker.tsx';
+import { CameraIcon } from './components/Icons.tsx';
 import StatsOverlay from './components/StatsOverlay.tsx';
 import StatusScreen, { type AppStatus } from './components/StatusScreen.tsx';
 import TryOnCanvas from './components/TryOnCanvas.tsx';
+import { useComparison } from './components/useComparison.ts';
 import { CATALOG } from './lib/catalog.ts';
 import { CONFIG } from './lib/config.ts';
 import { createFaceTracker, type FaceTracker } from './lib/faceTracker.ts';
@@ -43,6 +47,12 @@ export default function App() {
   // The "look at the camera" hint waits a moment before appearing: at steep
   // angles tracking can drop for a frame or two, and a flashing hint looks broken.
   const [showFaceHint, setShowFaceHint] = useState(false);
+  const comparison = useComparison();
+  const comparing = comparison.photo !== null;
+  // In comparison mode the scene shows the frame being rendered onto the photo.
+  const sceneModel = comparing
+    ? (CATALOG.find((model) => model.id === comparison.renderModelId) ?? null)
+    : selectedModel;
   // Bumping this re-runs the start-up effect ("Try again" button).
   const [attempt, setAttempt] = useState(0);
 
@@ -142,12 +152,16 @@ export default function App() {
           <TryOnCanvas
             video={session.video}
             tracker={session.tracker}
-            model={selectedModel}
+            model={sceneModel}
             monitor={monitor}
             smoothingEnabled={smoothingEnabled}
-            showDebug={showDebug}
+            showDebug={showDebug && !comparing}
             debugCanvas={debugCanvas}
             onFaceVisibleChange={setFaceVisible}
+            captureRequest={comparison.captureRequest}
+            onCapture={comparison.receivePhoto}
+            stillPhoto={comparison.photo}
+            onStillRendered={comparison.renderModelId ? comparison.receiveRender : null}
           />
         )}
         <canvas
@@ -156,11 +170,11 @@ export default function App() {
           // Re-read on every render: videoAspect changes when the phone rotates.
           width={videoAspect && session ? session.video.videoWidth : 0}
           height={videoAspect && session ? session.video.videoHeight : 0}
-          hidden={!showDebug}
+          hidden={!showDebug || comparing}
         />
       </div>
 
-      {status.kind === 'ready' && session && (
+      {status.kind === 'ready' && session && !comparing && (
         <>
           {showStats && (
             <StatsOverlay
@@ -192,6 +206,15 @@ export default function App() {
           </div>
           {showFaceHint && <p className="face-hint">Look at the camera to try on glasses</p>}
           <div className="bottom-bar">
+            <button
+              type="button"
+              className="capture-button"
+              disabled={!faceVisible}
+              title={faceVisible ? undefined : 'Look at the camera first'}
+              onClick={() => comparison.capture(selectedId)}
+            >
+              <CameraIcon /> {comparison.capturing ? 'Hold still…' : 'Capture & Compare'}
+            </button>
             {selectedModel && (
               // CC-BY models must credit their authors; doing it where the model is shown.
               <p className="credit">
@@ -205,6 +228,23 @@ export default function App() {
             <GlassesPicker models={CATALOG} selectedId={selectedId} onSelect={setSelectedId} />
           </div>
         </>
+      )}
+      {comparing && (
+        <ComparisonView
+          catalog={CATALOG}
+          slots={comparison.slots}
+          activeSlot={comparison.activeSlot}
+          results={comparison.results}
+          previewUrl={comparison.previewUrl}
+          canSave={comparison.canSave}
+          saving={comparison.saving}
+          onChooseFrame={comparison.chooseFrame}
+          onRemoveSlot={comparison.removeSlot}
+          onSelectSlot={comparison.selectSlot}
+          onRetake={comparison.retake}
+          onBack={comparison.exit}
+          onSave={() => void comparison.save()}
+        />
       )}
       <StatusScreen status={status} onRetry={retry} />
     </main>

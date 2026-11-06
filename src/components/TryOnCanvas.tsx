@@ -7,6 +7,7 @@ import { Canvas } from '@react-three/fiber';
 import { Suspense } from 'react';
 import * as THREE from 'three';
 import { CONFIG } from '../lib/config.ts';
+import type { CapturedPhoto } from '../lib/capture.ts';
 import type { GlassesModel } from '../lib/catalog.ts';
 import type { FaceTracker } from '../lib/faceTracker.ts';
 import type { PerformanceMonitor } from '../lib/performance.ts';
@@ -24,6 +25,10 @@ interface TryOnCanvasProps {
   showDebug: boolean;
   debugCanvas: HTMLCanvasElement | null;
   onFaceVisibleChange: (visible: boolean) => void;
+  captureRequest: number;
+  onCapture: (photo: CapturedPhoto) => void;
+  stillPhoto: CapturedPhoto | null;
+  onStillRendered: ((modelId: string, image: HTMLCanvasElement) => void) | null;
 }
 
 export default function TryOnCanvas(sceneProps: TryOnCanvasProps) {

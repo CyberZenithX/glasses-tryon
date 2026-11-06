@@ -44,15 +44,17 @@ export default function Glasses({ model, showContactShadow = true }: GlassesProp
   const tiltRad = THREE.MathUtils.degToRad(CONFIG.glasses.pantoscopicTiltDeg);
   const offsetFromPivot = fit.position.clone().sub(tiltPivot);
 
+  // Named after the model: Capture & Compare checks the scene for this name to know
+  // the model has finished loading and is in place before it renders a photo.
   return (
-    <>
+    <group name={model.id}>
       <group position={tiltPivot} rotation-x={tiltRad}>
         <group position={offsetFromPivot} rotation={fit.rotation} scale={fit.scale}>
           <primitive object={scene} />
         </group>
       </group>
       {showContactShadow && <NoseContactShadow />}
-    </>
+    </group>
   );
 }
 

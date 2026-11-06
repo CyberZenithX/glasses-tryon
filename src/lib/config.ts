@@ -203,6 +203,26 @@ export const CONFIG = {
     panelRefreshHz: 4,
   },
 
+  // Capture & Compare: one captured photo, shown with several frames side by side.
+  compare: {
+    maxFrames: 3, // how many frames can be compared at once
+    // Each comparison photo is a portrait crop around the face (width / height).
+    photoAspect: 0.8,
+    // Crop size relative to the detected face: height = face height x this, and at
+    // least the face width x widthPerFace (so the arms fit). Bigger = more shoulders.
+    cropHeightPerFace: 1.9,
+    cropWidthPerFace: 1.5,
+    // Moves the crop up by this fraction of its height, so there is room for hair.
+    cropRaise: 0.06,
+    // Target height (px) of each comparison photo. The scene is rendered larger than
+    // the camera frame when needed (up to maxRenderScale) so the glasses stay sharp.
+    photoHeightPx: 1200,
+    maxRenderScale: 2,
+    maxRenderSizePx: 4096, // never ask the GPU for a bigger drawing buffer than this
+    // Height (px) of each photo in the downloaded comparison image.
+    sheetPhotoHeightPx: 1000,
+  },
+
   ui: {
     // How long the face must be lost before "Look at the camera" appears (ms).
     faceHintDelayMs: 800,
