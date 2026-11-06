@@ -53,6 +53,9 @@ export default function App() {
     let cancelled = false;
     let stream: MediaStream | null = null;
     let tracker: FaceTracker | null = null;
+    const onVideoResize = () => {
+      if (video.videoWidth > 0) setVideoAspect(video.videoWidth / video.videoHeight);
+    };
 
     const start = async () => {
       try {
@@ -65,6 +68,9 @@ export default function App() {
       }
       if (cancelled) return;
       setVideoAspect(video.videoWidth / video.videoHeight);
+      // Phones swap the camera's width/height when rotated: follow it, so the
+      // stage (and the 3D camera's aspect ratio) always match the video.
+      video.addEventListener('resize', onVideoResize);
       setStatus({ kind: 'loading-tracker' });
 
       try {
@@ -83,6 +89,7 @@ export default function App() {
 
     return () => {
       cancelled = true;
+      video.removeEventListener('resize', onVideoResize);
       setSession(null);
       tracker?.close();
       stopWebcam(stream, video);
@@ -128,8 +135,9 @@ export default function App() {
         <canvas
           ref={setDebugCanvas}
           className="debug-canvas"
-          width={session?.video.videoWidth ?? 0}
-          height={session?.video.videoHeight ?? 0}
+          // Re-read on every render: videoAspect changes when the phone rotates.
+          width={videoAspect && session ? session.video.videoWidth : 0}
+          height={videoAspect && session ? session.video.videoHeight : 0}
           hidden={!showDebug}
         />
       </div>

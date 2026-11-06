@@ -52,6 +52,12 @@ export const CONFIG = {
     },
   },
 
+  rendering: {
+    // Render resolution relative to CSS pixels. 2 = sharp on retina screens; capped
+    // so 3x phones don't render 9x the pixels. Lower the max to 1.5 if a phone is slow.
+    devicePixelRatioRange: [1, 2] as [number, number],
+  },
+
   glasses: {
     // Draco decoder for compressed .glb files, served locally (drei would use a CDN).
     dracoDecoderPath: '/draco/',

@@ -13,9 +13,6 @@ import type { PerformanceMonitor } from '../lib/performance.ts';
 import TryOnScene from './TryOnScene.tsx';
 import VideoBackground from './VideoBackground.tsx';
 
-// Render at up to 2x device pixels: sharp on retina screens, capped for speed on 3x phones.
-const DEVICE_PIXEL_RATIO_RANGE: [number, number] = [1, 2];
-
 interface TryOnCanvasProps {
   video: HTMLVideoElement;
   tracker: FaceTracker;
@@ -31,7 +28,7 @@ export default function TryOnCanvas({ video, ...sceneProps }: TryOnCanvasProps) 
   return (
     <Canvas
       className="tryon-canvas"
-      dpr={DEVICE_PIXEL_RATIO_RANGE}
+      dpr={CONFIG.rendering.devicePixelRatioRange}
       // Soft (PCF) shadow maps, for the frame's shadow on the face.
       shadows="soft"
       // Neutral tone mapping keeps frame colours true (ACES, the default, shifts
