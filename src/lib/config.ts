@@ -195,5 +195,9 @@ export const CONFIG = {
     faceWireframeColor: '#3ee6a8', // canonical face mesh drawn on the face in debug view
     occluderColor: '#ff4fa3', // the debug view tints the (normally invisible) occluder this colour
     occluderOpacity: 0.25,
+    // Yellow dots at CONFIG.ear.rootCm: where the app assumes the arms rest on the
+    // ears. On a head turn, the dot should sit where the top of the ear meets the head.
+    earRootColor: '#ffd400',
+    earRootRadiusCm: 0.35,
   },
 } as const;

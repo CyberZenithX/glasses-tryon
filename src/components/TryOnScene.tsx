@@ -237,10 +237,18 @@ export default function TryOnScene(props: TryOnSceneProps) {
 
 // Debug view: the head axes and MediaPipe's canonical face as a wireframe. If the
 // wireframe sits exactly on the face, the camera matching and pose are correct.
+// Yellow dots mark the assumed ear roots (CONFIG.ear), to check the arm fit.
 function DebugHead() {
+  const [earX, earY, earZ] = CONFIG.ear.rootCm;
   return (
     <>
       <axesHelper args={[CONFIG.debug.poseAxesLengthCm]} />
+      {[earX, -earX].map((x) => (
+        <mesh key={x} position={[x, earY, earZ]} renderOrder={1}>
+          <sphereGeometry args={[CONFIG.debug.earRootRadiusCm]} />
+          <meshBasicMaterial color={CONFIG.debug.earRootColor} depthTest={false} />
+        </mesh>
+      ))}
       <mesh geometry={getCanonicalFace().geometry}>
         <meshBasicMaterial color={CONFIG.debug.faceWireframeColor} wireframe transparent opacity={0.35} />
       </mesh>
