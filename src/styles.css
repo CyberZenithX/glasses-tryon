@@ -5,8 +5,70 @@
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   background: #0b0b0d;
   color: #f4f4f5;
+  --overlay-bg: rgba(18, 18, 22, 0.62);
+  --overlay-border: rgba(255, 255, 255, 0.12);
+  --accent: #f4f4f5;
 }
 * { box-sizing: border-box; }
-html, body, #root { margin: 0; height: 100%; overflow: hidden; }
-.app { position: fixed; inset: 0; display: grid; place-items: center; }
-.hint { opacity: 0.8; }
+html, body, #root { margin: 0; height: 100%; overflow: hidden; background: #0b0b0d; }
+
+.app { position: fixed; inset: 0; overflow: hidden; }
+
+/* The stage has the video's aspect ratio and is scaled to cover the viewport
+   (like object-fit: cover). scaleX(-1) mirrors video and 3D together. */
+.stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100vw, calc(100dvh * var(--video-aspect)));
+  height: max(100dvh, calc(100vw / var(--video-aspect)));
+  transform: translate(-50%, -50%) scaleX(-1);
+}
+.stage-video,
+.stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+/* The <video> stays in the DOM (iOS Safari only decodes visible video) but the
+   canvas covers it; the canvas draws the same frames in sync with the glasses. */
+.stage-video { object-fit: cover; }
+.tryon-canvas { position: absolute !important; inset: 0; }
+
+.status-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  background: #0b0b0d;
+}
+.status-screen h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
+.status-screen p { margin: 0; max-width: 34ch; opacity: 0.8; line-height: 1.45; }
+
+.button {
+  margin-top: 8px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--overlay-border);
+  background: var(--accent);
+  color: #0b0b0d;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #fff;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
