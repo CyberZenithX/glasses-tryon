@@ -44,16 +44,16 @@ export function computeGlassesFit(model: THREE.Object3D, entry: GlassesModel): G
   const points = collectVertices(model).map((p) => p.applyMatrix4(rotationMatrix));
   const bounds = new THREE.Box3().setFromPoints(points);
 
-  // Scale: the widest extent across X is the frame width.
-  const targetWidthCm = entry.frameWidthMm / MM_PER_CM;
-  const scale = targetWidthCm / (bounds.max.x - bounds.min.x);
-
-  // Frame front = vertices within a thin slice at the very front (max Z).
-  // Centring on this slice (not the whole model) ignores the temple arms,
-  // which often slope down and would pull the lenses too low.
-  const sliceDepth = CONFIG.glasses.frontSliceDepthCm / scale;
+  // Frame front = vertices in a thin slice at the very front (max Z). Measuring
+  // only the front ignores the temple arms, which on some models splay wider
+  // than the frame or droop, and would distort the width and the centring.
+  const sliceDepth = (bounds.max.z - bounds.min.z) * CONFIG.glasses.frontSliceFraction;
   const front = new THREE.Box3().setFromPoints(points.filter((p) => p.z >= bounds.max.z - sliceDepth));
   const frontCentre = front.getCenter(new THREE.Vector3());
+
+  // Scale: the front's width across X becomes the real frame width.
+  const targetWidthCm = entry.frameWidthMm / MM_PER_CM;
+  const scale = targetWidthCm / (front.max.x - front.min.x);
 
   // Where the frame should go on the canonical face.
   const face = getCanonicalFace();

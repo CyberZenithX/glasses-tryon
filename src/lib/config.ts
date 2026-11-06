@@ -44,9 +44,10 @@ export const CONFIG = {
     // Real glasses tilt slightly, with the lower rims closer to the cheeks
     // ("pantoscopic tilt"), and this tilt is added to every model. Positive = lower rims move in.
     pantoscopicTiltDeg: 6,
-    // Depth (cm) of the slice at the front of a model that counts as "the frame
-    // front" when auto-centring the lenses on the eyes. Temples are ignored.
-    frontSliceDepthCm: 1.5,
+    // Fraction of a model's depth (front to temple tips) that counts as "the frame
+    // front". Its width is the frame width and its centre goes on the eyes. Using
+    // only the front means temple arms (which may splay wider or droop) are ignored.
+    frontSliceFraction: 0.08,
     // How fast the glasses fade in/out when a face appears/disappears (seconds).
     fadeDurationSec: 0.25,
   },

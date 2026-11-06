@@ -31,4 +31,60 @@ export interface GlassesModel {
   credit: ModelCredit;
 }
 
-export const CATALOG: GlassesModel[] = [];
+// No model's real frame width was published by its author, so most use 140 mm
+// (a typical adult medium frame). cuv-glasses was modelled at real scale (135 mm).
+const DEFAULT_FRAME_WIDTH_MM = 140;
+const FACE_LEFT = -90; // rotate a model whose front faces +X so it faces the camera
+const FACE_RIGHT = 90; // rotate a model whose front faces -X so it faces the camera
+
+export const CATALOG: GlassesModel[] = [
+  {
+    id: 'eder',
+    name: 'Eder',
+    file: '/models/eder-glasses.glb',
+    frameWidthMm: DEFAULT_FRAME_WIDTH_MM,
+    credit: { title: 'Glasses', author: 'Marius.Eder', sourceUrl: 'https://skfb.ly/6Ruqv', license: 'CC-BY-4.0' },
+  },
+  {
+    id: 'tilley',
+    name: 'Tilley',
+    file: '/models/tilley-glasses.glb',
+    frameWidthMm: DEFAULT_FRAME_WIDTH_MM,
+    credit: { title: 'Glasses', author: 'Peter Tilley', sourceUrl: 'https://skfb.ly/6ZUC6', license: 'CC-BY-4.0' },
+  },
+  {
+    id: 'victory',
+    name: 'Victory',
+    file: '/models/albertvictory-glasses.glb',
+    frameWidthMm: DEFAULT_FRAME_WIDTH_MM,
+    rotationDeg: [0, FACE_LEFT, 0],
+    credit: { title: 'Glasses', author: 'AlbertVictory', sourceUrl: 'https://skfb.ly/oyp9A', license: 'CC-BY-4.0' },
+  },
+  {
+    id: 'kinokoda',
+    name: 'Kinokoda',
+    file: '/models/kinokoda-glasses.glb',
+    frameWidthMm: DEFAULT_FRAME_WIDTH_MM,
+    rotationDeg: [0, FACE_RIGHT, 0],
+    credit: { title: 'Glasses', author: 'Dokono Kinokoda', sourceUrl: 'https://skfb.ly/6StPQ', license: 'CC-BY-4.0' },
+  },
+  {
+    id: 'cuv',
+    name: 'C.U.V',
+    file: '/models/cuv-glasses.glb',
+    frameWidthMm: 135,
+    credit: { title: 'Glasses', author: 'C.U.V', sourceUrl: 'https://skfb.ly/oHPPq', license: 'CC-BY-4.0' },
+  },
+  {
+    id: 'heart',
+    name: 'Heart',
+    file: '/models/yadomi-heart-glasses.glb',
+    frameWidthMm: DEFAULT_FRAME_WIDTH_MM,
+    credit: {
+      title: 'Heart-shaped glasses',
+      author: '🎀 ★彡[ꜰᴇʟɪx ʏᴀᴅᴏᴍɪ]彡★ 🎀',
+      sourceUrl: 'https://skfb.ly/6ZNXP',
+      license: 'CC-BY-4.0',
+    },
+  },
+];
