@@ -89,9 +89,10 @@ export function computeGlassesFit(model: THREE.Object3D, entry: GlassesModel): G
  *     in around the hinge, so they run straight back along the head;
  *  1. stretch/shrink them along the head to a standard length, because artists'
  *     arms vary a lot (some end before the ear, some far behind it);
- *  2. angle them so they pass just over the ear root (CONFIG.ear). Hinges sit at
- *     different heights on different frames, so a fixed angle can't work: each
- *     model gets the angle that runs from its own hinge to the ear.
+ *  2. aim them at the ear root (CONFIG.ear): down (or up) AND outwards. Hinges
+ *     sit at different heights and widths on different frames, so a fixed angle
+ *     can't work: we measure where each model's arms are when they reach the ear,
+ *     and shear them by exactly the amount that moves them onto it.
  * The frame front is untouched. Edits each mesh's own copy of its geometry, once.
  */
 export function bendTemplesToEars(model: THREE.Object3D, fit: GlassesFit): void {
@@ -119,29 +120,41 @@ export function bendTemplesToEars(model: THREE.Object3D, fit: GlassesFit): void 
 
   const hingeHalfWidth = fit.frameWidthCm / 2; // the front is centred on x = 0
   const splayRad = measureArmSplay(meshes, fit.hingeZ, hingeHalfWidth);
-  const slope = armSlopeToEar(meshes, fit.hingeZ, stretch);
-  const point = new THREE.Vector3();
 
-  for (const { mesh, meshToFace } of meshes) {
+  // Steps 0 and 1 on every arm vertex (in face space); the front stays as it is.
+  const straightened = meshes.map(({ mesh, meshToFace }) => {
+    const positions = mesh.geometry.getAttribute('position');
+    const points: THREE.Vector3[] = [];
+    for (let i = 0; i < positions.count; i++) {
+      const point = new THREE.Vector3().fromBufferAttribute(positions, i).applyMatrix4(meshToFace);
+      if (fit.hingeZ - point.z > 0) {
+        // 0. Un-splay: rotate around this side's hinge (x = ±half width, z = hingeZ).
+        //    Left arm (x > 0) turns inwards one way, right arm the mirror way.
+        const side = Math.sign(point.x) || 1;
+        const dx = point.x - side * hingeHalfWidth;
+        const dz = point.z - fit.hingeZ;
+        const angle = side * splayRad;
+        point.x = side * hingeHalfWidth + dx * Math.cos(angle) + dz * Math.sin(angle);
+        point.z = fit.hingeZ - dx * Math.sin(angle) + dz * Math.cos(angle);
+        // 1. Stretch along the head.
+        point.z = fit.hingeZ - (fit.hingeZ - point.z) * stretch;
+      }
+      points.push(point);
+    }
+    return points;
+  });
+
+  // 2. Aim at the ear: slopes (cm per cm travelled back) for height and width.
+  const aim = armSlopesToEar(straightened.flat(), fit.hingeZ);
+  for (const [index, { mesh, meshToFace }] of meshes.entries()) {
     const faceToMesh = meshToFace.clone().invert();
     const positions = mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
-    for (let i = 0; i < positions.count; i++) {
-      point.fromBufferAttribute(positions, i).applyMatrix4(meshToFace);
-      if (fit.hingeZ - point.z <= 0) continue; // frame front: untouched
-
-      // 0. Un-splay: rotate around this side's hinge (x = ±half width, z = hingeZ).
-      //    Left arm (x > 0) turns inwards one way, right arm the mirror way.
-      const side = Math.sign(point.x) || 1;
-      const dx = point.x - side * hingeHalfWidth;
-      const dz = point.z - fit.hingeZ;
-      const angle = side * splayRad;
-      point.x = side * hingeHalfWidth + dx * Math.cos(angle) + dz * Math.sin(angle);
-      point.z = fit.hingeZ - dx * Math.sin(angle) + dz * Math.cos(angle);
-
-      const behindHinge = fit.hingeZ - point.z; // cm behind the hinge (positive = on the arm)
-      const newBehind = behindHinge * stretch;
-      point.z = fit.hingeZ - newBehind;
-      point.y -= newBehind * slope;
+    for (const [i, point] of (straightened[index] ?? []).entries()) {
+      const behindHinge = fit.hingeZ - point.z;
+      if (behindHinge > 0) {
+        point.y -= behindHinge * aim.down;
+        point.x += (Math.sign(point.x) || 1) * behindHinge * aim.out;
+      }
       point.applyMatrix4(faceToMesh);
       positions.setXYZ(i, point.x, point.y, point.z);
     }
@@ -162,48 +175,45 @@ export function tiltPivot(): THREE.Vector3 {
 }
 
 /**
- * Downward slope (drop in cm per cm travelled back) that brings the arms down onto
- * the ear root. We measure how high the arms already are where the ear is (after
- * stretching), and tilt them by exactly the amount that moves that height onto the
- * ear. Measuring at the ear (not at the hinge) works for any arm shape: straight,
- * already sloping, or curved, and ignores chunky frame fronts near the hinge.
+ * How much to shear the (straightened, stretched) arms so they pass over the ear
+ * root: `down` = drop in cm per cm travelled back, `out` = outward move per cm.
+ * We measure where the arms already are at the ear's depth (average height and
+ * distance from the centre line) and tilt them by exactly the amount that moves
+ * that point onto the ear. Measuring at the ear (not at the hinge) works for any
+ * arm shape: straight, already sloping, or curved, and ignores chunky frame fronts.
  */
-function armSlopeToEar(
-  meshes: { mesh: THREE.Mesh; meshToFace: THREE.Matrix4 }[],
-  hingeZ: number,
-  stretch: number,
-): number {
+function armSlopesToEar(points: THREE.Vector3[], hingeZ: number): { down: number; out: number } {
   const EAR_ZONE_HALF_DEPTH_CM = 1; // arm vertices within ±1 cm of the ear (front to back)
-  const MAX_SLOPE = Math.tan(THREE.MathUtils.degToRad(30)); // guard against odd models
+  const MAX_DOWN_SLOPE = Math.tan(THREE.MathUtils.degToRad(30)); // guards against odd models
+  const MAX_OUT_SLOPE = Math.tan(THREE.MathUtils.degToRad(15));
 
   // Ear root, moved into the untilted frame (rotate by -tilt about the pivot).
-  const [, earY, earZ] = CONFIG.ear.rootCm;
+  const [earX, earY, earZ] = CONFIG.ear.rootCm;
   const pivot = tiltPivot();
-  const ear = new THREE.Vector3(0, earY + CONFIG.ear.armRestHeightCm, earZ)
+  const ear = new THREE.Vector3(earX, earY + CONFIG.ear.armRestHeightCm, earZ)
     .sub(pivot)
     .applyAxisAngle(new THREE.Vector3(1, 0, 0), -THREE.MathUtils.degToRad(CONFIG.glasses.pantoscopicTiltDeg))
     .add(pivot);
   const earBehindHinge = hingeZ - ear.z;
 
-  // Average height of the (stretched) arms around the ear.
-  const point = new THREE.Vector3();
   let sumY = 0;
+  let sumHalfWidth = 0;
   let count = 0;
-  for (const { mesh, meshToFace } of meshes) {
-    const positions = mesh.geometry.getAttribute('position');
-    for (let i = 0; i < positions.count; i++) {
-      point.fromBufferAttribute(positions, i).applyMatrix4(meshToFace);
-      const behind = (hingeZ - point.z) * stretch;
-      if (behind > 0 && Math.abs(behind - earBehindHinge) <= EAR_ZONE_HALF_DEPTH_CM) {
-        sumY += point.y;
-        count++;
-      }
+  for (const point of points) {
+    const behind = hingeZ - point.z;
+    if (behind > 0 && Math.abs(behind - earBehindHinge) <= EAR_ZONE_HALF_DEPTH_CM) {
+      sumY += point.y;
+      sumHalfWidth += Math.abs(point.x);
+      count++;
     }
   }
-  if (count === 0) return 0;
-  const armYAtEar = sumY / count;
-  const slope = (armYAtEar - ear.y) / earBehindHinge;
-  return THREE.MathUtils.clamp(slope, -MAX_SLOPE, MAX_SLOPE);
+  if (count === 0) return { down: 0, out: 0 };
+  const down = (sumY / count - ear.y) / earBehindHinge;
+  const out = (ear.x - sumHalfWidth / count) / earBehindHinge;
+  return {
+    down: THREE.MathUtils.clamp(down, -MAX_DOWN_SLOPE, MAX_DOWN_SLOPE),
+    out: THREE.MathUtils.clamp(out, -MAX_OUT_SLOPE, MAX_OUT_SLOPE),
+  };
 }
 
 /**

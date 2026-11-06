@@ -58,18 +58,21 @@ export const CONFIG = {
     devicePixelRatioRange: [1, 2] as [number, number],
   },
 
-  // Where the ears are on the canonical face (cm; +X = person's left, +Y = up,
-  // +Z = towards the camera; eye centre is at y ≈ 2.6, nose tip at z ≈ 7.6).
-  // MediaPipe has no ear landmarks, so this is a fixed average position. Checked
-  // two ways: real frames bend over the ear ~9.5-10 cm behind the hinge, and in
-  // real head-turn screenshots the arm must pass ~1 cm beyond the front edge of
-  // the ear (which is just behind the back edge of the face mesh, z ≈ -2.4).
+  // Where the ears are, in MediaPipe's head coordinates (cm; +X = person's left,
+  // +Y = up, +Z = towards the camera; eye centre is at y ≈ 2.6, nose tip at z ≈ 7.6).
+  // MediaPipe has no ear landmarks, so this is a fixed position, calibrated by
+  // running real head-turn webcam frames through the app with the debug view on
+  // (yellow dots = this point) and moving it until it sat where the top of the
+  // ear meets the head. It is further out/back than a real skull's ear (~7.5, -4)
+  // because MediaPipe assumes a 63° camera field of view, wider than most webcams
+  // and phone cameras, which squashes everything behind the face towards the face.
   ear: {
     // "Ear root": where the top of the ear joins the head; temple arms rest here.
-    // Arms pass over the ear above this point, then their tips go behind the ear.
+    // Arms are aimed at this point, then their tips go behind the ear.
     // Raise Y if arms cut through the ear; lower it if they float above it.
-    // Move Z back (more negative) if arm tips vanish before reaching the ear.
-    rootCm: [7.2, 2.8, -4.2] as [number, number, number],
+    // Move Z back (more negative) if arms vanish before reaching the ear; raise X
+    // if, seen from the front, the arms end inside the face instead of at the ears.
+    rootCm: [8.8, 2.8, -5.6] as [number, number, number],
     // How far above the ear root the middle of the arm passes (about half its thickness).
     armRestHeightCm: 0.25,
     // Size of the invisible ear shape (half-width out from the head, half-height,
@@ -90,10 +93,11 @@ export const CONFIG = {
     // Real glasses tilt slightly, with the lower rims closer to the cheeks
     // ("pantoscopic tilt"), and this tilt is added to every model. Positive = lower rims move in.
     pantoscopicTiltDeg: 6,
-    // Temple arm length from hinge to tip, in cm. Every model's arms are stretched or
-    // shrunk to this so they reach over the ear root and a few cm behind it.
+    // Temple arm length from hinge to tip, in cm (before they are aimed at the ear).
+    // Every model's arms are stretched or shrunk to this so they reach over the ear
+    // root and a few cm behind it.
     // Increase if arm tips stop on top of the ear; decrease if they poke out behind it.
-    templeLengthCm: 12.5,
+    templeLengthCm: 13.5,
     // Limits on that stretch, so an unusual model can't be distorted too much.
     templeStretchRange: [0.7, 1.5] as [number, number],
     // Arms modelled opened outwards by more than this (degrees) are swung back in
